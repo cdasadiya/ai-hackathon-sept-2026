@@ -57,4 +57,9 @@ jobs:
           python manage.py migrate --no-input
 
       - name: Tests
+        env:
+          # Test client is plain HTTP. Production defaults stay on for check --deploy.
+          SECURE_SSL_REDIRECT: "False"
+          SESSION_COOKIE_SECURE: "False"
+          CSRF_COOKIE_SECURE: "False"
         run: python manage.py test app --verbosity 2

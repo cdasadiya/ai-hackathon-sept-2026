@@ -35,8 +35,9 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = get_bool_env("SECURE_HSTS_PRELOAD", True)
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = get_bool_env("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Plain HTTP (Docker Compose, CI) must opt out. Render leaves these unset.
+    SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", True)
+    CSRF_COOKIE_SECURE = get_bool_env("CSRF_COOKIE_SECURE", True)
 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",

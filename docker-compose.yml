@@ -21,6 +21,11 @@ services:
       - "8000:8000"
     environment:
       DEBUG: "False"
+      # Compose publishes plain HTTP. Production defaults would 301 to HTTPS
+      # and mark session/CSRF cookies Secure, which browsers then drop.
+      SECURE_SSL_REDIRECT: "False"
+      SESSION_COOKIE_SECURE: "False"
+      CSRF_COOKIE_SECURE: "False"
       SECRET_KEY: docker-local-secret-replace-in-production
       ALLOWED_HOSTS: localhost,127.0.0.1,web
       CSRF_TRUSTED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
