@@ -1,0 +1,29 @@
+{% extends "base_dashboard.html" %}
+{% block title %}My Profile{% endblock %}
+{% block sidebar_role %}Patient Portal{% endblock %}
+{% block topbar_title %}<span>My</span> Profile{% endblock %}
+{% block sidebar_nav %}
+<a href="{% url 'patient_dashboard' %}"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-person-gear me-2" style="color:#4f46e5"></i>Edit Profile</h5></div>
+      <div class="nh-card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-6"><label class="nh-form-label">First Name</label>{{ form.first_name }}</div>
+            <div class="col-6"><label class="nh-form-label">Last Name</label>{{ form.last_name }}</div>
+            {% for field in form %}{% if field.name not in 'first_name,last_name' %}
+            <div class="col-12"><label class="nh-form-label">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}</div>
+            {% endif %}{% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-4"><i class="bi bi-save me-1"></i>Save Profile</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

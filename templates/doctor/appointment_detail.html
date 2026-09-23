@@ -1,0 +1,113 @@
+{% extends "base_dashboard.html" %}
+{% block title %}Appointment {{ appt.appointment_id }}{% endblock %}
+{% block sidebar_role %}Doctor Portal{% endblock %}
+{% block topbar_title %}<span>Appointment</span> Detail{% endblock %}
+
+{% block sidebar_nav %}
+<span class="nav-section-label">Navigation</span>
+<a href="{% url 'doctor_dashboard' %}"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+<a href="{% url 'doctor_profile_edit' %}"><i class="bi bi-person-badge"></i> My Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Left: Appointment + Report -->
+  <div class="col-lg-5">
+    <div class="nh-card mb-4">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-calendar-event me-2" style="color:#4f46e5"></i>Appointment Info</h5>
+        <span class="badge-{{ appt.status }}">{{ appt.get_status_display }}</span>
+      </div>
+      <div class="nh-card-body">
+        <dl class="row mb-0">
+          <dt class="col-5 small text-muted">Apt ID</dt>
+          <dd class="col-7"><span class="apt-id-badge">{{ appt.appointment_id }}</span></dd>
+          <dt class="col-5 small text-muted">Patient</dt>
+          <dd class="col-7 fw-semibold">{{ appt.patient.user.get_full_name|default:appt.patient.user.username }}</dd>
+          <dt class="col-5 small text-muted">Patient Email</dt>
+          <dd class="col-7 small">{{ appt.patient.user.email }}</dd>
+          <dt class="col-5 small text-muted">Start</dt>
+          <dd class="col-7">{{ appt.start_time|date:"M d, Y H:i" }}</dd>
+          <dt class="col-5 small text-muted">End</dt>
+          <dd class="col-7">{{ appt.end_time|date:"H:i" }}</dd>
+          {% if appt.notes %}
+          <dt class="col-5 small text-muted">Patient Notes</dt>
+          <dd class="col-7 small">{{ appt.notes }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <!-- Doctor Review Form -->
+    <div class="nh-card mb-4">
+      <div class="nh-card-header"><h5><i class="bi bi-pencil-square me-2" style="color:#4f46e5"></i>Update Status &amp; Remarks</h5></div>
+      <div class="nh-card-body">
+        <form method="post" action="{% url 'doctor_update_appointment' appt.appointment_id %}">
+          {% csrf_token %}
+          {% for field in remark_form %}
+          <div class="mb-3">
+            <label class="nh-form-label">{{ field.label }}</label>
+            {{ field }}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary w-100 btn-sm"><i class="bi bi-check-lg me-1"></i>Save Review</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Patient Blood Report -->
+    {% if report %}
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-droplet-fill text-danger me-2"></i>Patient Blood Report</h5></div>
+      <div class="nh-card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+          <span class="fw-semibold small">{{ report.original_filename }}</span>
+        </div>
+        <div class="mb-2"><span class="badge-{{ report.n8n_status }}">{{ report.n8n_status }}</span></div>
+        {% with url=report.get_file_url %}
+        {% if url %}<a href="{{ url }}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-download me-1"></i>Download Report</a>{% endif %}
+        {% endwith %}
+        {% if report.ai_analysis %}
+        <div class="mt-3 p-2 bg-light rounded small"><strong><i class="bi bi-robot me-1 text-success"></i>AI Analysis:</strong><pre class="mb-0 mt-1 small">{{ report.ai_analysis|pprint }}</pre></div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Comments -->
+  <div class="col-lg-7">
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-chat-dots me-2" style="color:#4f46e5"></i>Clinical Discussion</h5></div>
+      <div class="nh-card-body">
+        {% if comments %}
+        <div class="mb-4">
+          {% for c in comments %}
+          <div class="d-flex gap-2 mb-3">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#0ea5e9);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#fff;flex-shrink:0">{{ c.author.username|first|upper }}</div>
+            <div class="flex-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <strong class="small">{{ c.author.get_full_name|default:c.author.username }}</strong>
+                <span class="badge bg-light text-muted" style="font-size:.65rem">{{ c.author.role }}</span>
+                <span class="text-muted" style="font-size:.7rem">{{ c.created_at|date:"M d, H:i" }}</span>
+              </div>
+              <div class="p-2 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;font-size:.85rem">{{ c.body }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="nh-empty"><i class="bi bi-chat-square"></i><p>No comments yet.</p></div>
+        {% endif %}
+
+        <form method="post" action="{% url 'doctor_add_comment' appt.appointment_id %}">
+          {% csrf_token %}
+          <div class="mb-2"><label class="nh-form-label">Add Clinical Note</label>{{ comment_form.body }}</div>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send me-1"></i>Post Note</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

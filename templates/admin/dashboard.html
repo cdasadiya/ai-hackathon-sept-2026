@@ -1,0 +1,130 @@
+{% extends "base_dashboard.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block sidebar_role %}Admin Portal{% endblock %}
+{% block topbar_title %}<span>Admin</span> Dashboard{% endblock %}
+
+{% block sidebar_nav %}
+<span class="nav-section-label">Management</span>
+<a href="{% url 'admin_dashboard' %}" class="active"><i class="bi bi-house-door"></i> Dashboard</a>
+<a href="/admin/" target="_blank"><i class="bi bi-gear-wide-connected"></i> Django Admin</a>
+<span class="nav-section-label">Doctors</span>
+<a href="/admin/app/doctorprofile/" target="_blank"><i class="bi bi-person-badge"></i> All Doctors</a>
+<a href="/admin/app/patientprofile/" target="_blank"><i class="bi bi-people"></i> All Patients</a>
+<span class="nav-section-label">Data</span>
+<a href="/admin/app/appointment/" target="_blank"><i class="bi bi-calendar3"></i> Appointments</a>
+<a href="/admin/app/bloodreport/" target="_blank"><i class="bi bi-droplet-fill"></i> Blood Reports</a>
+<a href="/admin/app/usertoken/" target="_blank"><i class="bi bi-key"></i> API Tokens</a>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right me-1"></i>Django Admin</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  {% for icon,color,val,label in stats %}
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:{{ color }}20"><i class="{{ icon }}" style="color:{{ color }}"></i></div>
+      <div><div class="nh-stat-value">{{ val }}</div><div class="nh-stat-label">{{ label }}</div></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-4">
+  <!-- Doctor Approval Queue -->
+  <div class="col-lg-6">
+    <div class="nh-card">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-person-check me-2" style="color:#4f46e5"></i>Doctor Approval Queue</h5>
+        <span class="badge bg-warning text-dark">{{ pending_doctors }} Pending</span>
+      </div>
+      <div class="nh-card-body" style="padding-top:0">
+        <div class="table-responsive mt-3">
+          <table class="nh-table">
+            <thead><tr><th>Doctor</th><th>Email</th><th>License</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {% for d in all_doctors %}
+              <tr>
+                <td class="fw-semibold small">Dr. {{ d.user.get_full_name|default:d.user.username }}</td>
+                <td class="text-muted small">{{ d.user.email }}</td>
+                <td class="small">{{ d.medical_license_no|default:"—" }}</td>
+                <td><span class="badge-{{ d.verification_status }}">{{ d.get_verification_status_display }}</span></td>
+                <td>
+                  {% if d.verification_status == "PENDING" %}
+                  <form method="post" action="{% url 'approve_doctor' d.id %}" class="d-inline">{% csrf_token %}
+                    <button class="btn btn-sm btn-outline-success py-0" type="submit" title="Approve">✅</button>
+                  </form>
+                  <form method="post" action="{% url 'reject_doctor' d.id %}" class="d-inline ms-1">{% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger py-0" type="submit" title="Reject">❌</button>
+                  </form>
+                  {% else %}
+                  <span class="text-muted small">{{ d.get_verification_status_display }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted small py-3">No doctors registered yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Appointments -->
+  <div class="col-lg-6">
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-calendar3 me-2" style="color:#4f46e5"></i>Recent Appointments</h5></div>
+      <div class="nh-card-body" style="padding-top:0">
+        <div class="table-responsive mt-3">
+          <table class="nh-table">
+            <thead><tr><th>Apt ID</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for a in recent_appointments %}
+              <tr>
+                <td><span class="apt-id-badge">{{ a.appointment_id }}</span></td>
+                <td class="small">{{ a.patient.user.username }}</td>
+                <td class="small">Dr. {{ a.doctor.user.username }}</td>
+                <td class="text-muted small">{{ a.start_time|date:"M d, Y" }}</td>
+                <td><span class="badge-{{ a.status }}">{{ a.get_status_display }}</span></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted small py-3">No appointments yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Users -->
+  <div class="col-12">
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-people me-2" style="color:#4f46e5"></i>Recently Joined Users</h5></div>
+      <div class="nh-card-body" style="padding-top:0">
+        <div class="table-responsive mt-3">
+          <table class="nh-table">
+            <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Active</th></tr></thead>
+            <tbody>
+              {% for u in recent_users %}
+              <tr>
+                <td class="fw-semibold small">{{ u.username }}</td>
+                <td class="text-muted small">{{ u.email }}</td>
+                <td><span class="badge-{{ u.role }}">{{ u.role }}</span></td>
+                <td class="text-muted small">{{ u.date_joined|date:"M d, Y" }}</td>
+                <td>{% if u.is_active %}<span class="badge-COMPLETED">Active</span>{% else %}<span class="badge-CANCELLED">Inactive</span>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

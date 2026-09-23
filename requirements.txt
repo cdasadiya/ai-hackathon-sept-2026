@@ -1,0 +1,12 @@
+Django>=5.1,<5.3
+djangorestframework==3.16.0
+djangorestframework-simplejwt==5.5.0
+gunicorn==23.0.0
+whitenoise==6.9.0
+dj-database-url==3.0.1
+psycopg[binary]==3.2.12
+python-dotenv==1.0.1
+requests==2.32.3
+google-api-python-client==2.128.0
+google-auth==2.29.0
+google-auth-httplib2==0.2.0

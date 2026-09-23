@@ -1,0 +1,249 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Patient Dashboard{% endblock %}
+{% block sidebar_role %}Patient Portal{% endblock %}
+{% block topbar_title %}<span>Patient</span> Dashboard{% endblock %}
+
+{% block sidebar_nav %}
+<span class="nav-section-label">Main</span>
+<a href="{% url 'patient_dashboard' %}" class="active"><i class="bi bi-house-door"></i> Dashboard</a>
+<a href="{% url 'patient_dashboard' %}?tab=upcoming"><i class="bi bi-calendar-check"></i> Upcoming</a>
+<a href="{% url 'patient_dashboard' %}?tab=past"><i class="bi bi-clock-history"></i> Past</a>
+<a href="{% url 'patient_dashboard' %}?tab=completed"><i class="bi bi-check2-circle"></i> Completed</a>
+<a href="{% url 'patient_dashboard' %}?tab=cancelled"><i class="bi bi-x-circle"></i> Cancelled</a>
+<span class="nav-section-label">Account</span>
+<a href="{% url 'patient_profile_edit' %}"><i class="bi bi-person-gear"></i> My Profile</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  {% with total=all_appointments.count %}
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#eef2ff"><i class="bi bi-calendar3" style="color:#4f46e5"></i></div>
+      <div><div class="nh-stat-value">{{ total }}</div><div class="nh-stat-label">Total Appointments</div></div>
+    </div>
+  </div>
+  {% endwith %}
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#ecfdf5"><i class="bi bi-calendar-check" style="color:#10b981"></i></div>
+      <div><div class="nh-stat-value">{{ all_appointments|length }}</div><div class="nh-stat-label">All Records</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#fef3c7"><i class="bi bi-droplet-fill" style="color:#f59e0b"></i></div>
+      <div><div class="nh-stat-value">{{ blood_reports.count }}</div><div class="nh-stat-label">Blood Reports</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#f0f9ff"><i class="bi bi-person-circle" style="color:#0ea5e9"></i></div>
+      <div><div class="nh-stat-value">{{ profile.blood_group|default:"—" }}</div><div class="nh-stat-label">Blood Group</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- LEFT: Book Appointment (Unified Form) -->
+  <div class="col-lg-4">
+    <div class="nh-card mb-4">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-calendar-plus-fill me-2" style="color:#4f46e5"></i>Book Appointment</h5>
+      </div>
+      <div class="nh-card-body">
+        {% with doc_qs=form.fields.doctor.queryset %}
+        {% if not doc_qs %}
+        <div class="info-banner mb-3">
+          <i class="bi bi-info-circle me-1 text-warning"></i>
+          <strong>No doctors available.</strong> Please check back later.
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{% url 'book_appointment' %}" enctype="multipart/form-data" id="bookForm">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="nh-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|striptags }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary w-100"
+            {% if not form.fields.doctor.queryset %}disabled{% endif %}>
+            <i class="bi bi-calendar-check me-1"></i>Book Appointment
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Standalone Upload -->
+    <div class="nh-card">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-cloud-upload-fill me-2" style="color:#4f46e5"></i>Upload Report</h5>
+      </div>
+      <div class="nh-card-body">
+        <form method="post" action="{% url 'upload_report' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="nh-form-label" for="apt_sel">Link to Appointment <span class="text-muted">(optional)</span></label>
+            <select class="form-select form-select-sm" id="apt_sel" name="appointment_id">
+              <option value="">— No appointment —</option>
+              {% for a in all_appointments %}
+              <option value="{{ a.appointment_id }}">{{ a.appointment_id }} — Dr. {{ a.doctor.user.get_full_name|default:a.doctor.user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="nh-form-label" for="report_up">Report File (PDF / Image)</label>
+            <input class="form-control form-control-sm" type="file" id="report_up" name="report_file" accept="application/pdf,image/*" required>
+          </div>
+          <button class="btn btn-outline-primary w-100 btn-sm" type="submit">
+            <i class="bi bi-upload me-1"></i>Upload Report
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Appointments & Reports -->
+  <div class="col-lg-8">
+    <!-- Search + Tabs -->
+    <div class="nh-card mb-4">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-calendar3 me-2" style="color:#4f46e5"></i>My Appointments</h5>
+        <form method="get" class="d-flex gap-2" style="flex:0 0 auto">
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <input type="search" class="form-control form-control-sm" name="search" value="{{ search }}" placeholder="Search doctor / ID…" style="width:180px">
+          <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+      <div class="nh-card-body" style="padding-top:0">
+        <!-- Tabs -->
+        <div class="nh-tabs my-3">
+          {% for t, label in tab_choices %}<a href="?tab={{ t }}&search={{ search }}" class="nh-tab {% if tab == t %}active{% endif %}">{{ label }}</a>{% endfor %}
+        </div>
+
+        {% if appointments %}
+        <div class="table-responsive">
+          <table class="nh-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Doctor</th>
+                <th>Date &amp; Time</th>
+                <th>Status</th>
+                <th>Report</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in appointments %}
+              <tr>
+                <td><span class="apt-id-badge">{{ a.appointment_id }}</span></td>
+                <td class="fw-semibold">Dr. {{ a.doctor.user.get_full_name|default:a.doctor.user.username }}</td>
+                <td class="text-muted">{{ a.start_time|date:"M d, Y" }}<br><small>{{ a.start_time|date:"H:i" }}–{{ a.end_time|date:"H:i" }}</small></td>
+                <td><span class="badge-{{ a.status }}">{{ a.get_status_display }}</span></td>
+                <td>
+                  {% with rep=a.blood_reports.first %}
+                  {% if rep %}<a href="{{ rep.get_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-download"></i></a>{% else %}<span class="text-muted small">—</span>{% endif %}
+                  {% endwith %}
+                </td>
+                <td>
+                  <a href="{% url 'patient_appointment_detail' a.appointment_id %}" class="btn btn-sm btn-outline-secondary py-0 me-1"><i class="bi bi-eye"></i></a>
+                  {% if a.status == "PENDING" %}
+                  <form method="post" action="{% url 'cancel_appointment' a.appointment_id %}" class="d-inline" onsubmit="return confirm('Cancel appointment {{ a.appointment_id }}?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-x"></i></button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if appointments.has_other_pages %}
+        <nav class="mt-3">
+          <ul class="pagination pagination-sm justify-content-end mb-0">
+            {% if appointments.has_previous %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&search={{ search }}&page={{ appointments.previous_page_number }}">‹</a></li>{% endif %}
+            <li class="page-item disabled"><a class="page-link">{{ appointments.number }}/{{ appointments.paginator.num_pages }}</a></li>
+            {% if appointments.has_next %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&search={{ search }}&page={{ appointments.next_page_number }}">›</a></li>{% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="nh-empty">
+          <i class="bi bi-calendar-x"></i>
+          <p>No appointments for this filter.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Blood Reports -->
+    <div class="nh-card">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-droplet-fill me-2 text-danger"></i>My Blood Reports</h5>
+      </div>
+      <div class="nh-card-body" style="padding-top:0">
+        {% if blood_reports %}
+        <div class="table-responsive mt-3">
+          <table class="nh-table">
+            <thead><tr><th>File</th><th>Linked Appointment</th><th>Uploaded</th><th>AI Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {% for r in blood_reports %}
+              <tr>
+                <td class="fw-semibold small">{{ r.original_filename|truncatechars:30 }}</td>
+                <td>{% if r.appointment %}<span class="apt-id-badge">{{ r.appointment.appointment_id }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                <td class="text-muted small">{{ r.uploaded_at|date:"M d, Y" }}</td>
+                <td><span class="badge-{{ r.n8n_status }}">{{ r.n8n_status }}</span></td>
+                <td>
+                  {% with url=r.get_file_url %}{% if url %}<a href="{{ url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-download"></i></a>{% endif %}{% endwith %}
+                  {% if r.health_report.drive_link %}<a href="{{ r.health_report.drive_link }}" target="_blank" class="btn btn-sm btn-outline-success py-0 ms-1" title="Health Report"><i class="bi bi-file-earmark-medical"></i></a>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="nh-empty mt-3">
+          <i class="bi bi-file-earmark-x"></i>
+          <p>No blood reports uploaded yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Populate tab choices from Django
+const tabChoices = [
+  ['upcoming','Upcoming'],['past','Past'],['completed','Completed'],['cancelled','Cancelled'],['all','All']
+];
+const tabsEl = document.querySelector('.nh-tabs');
+if (tabsEl) {
+  tabsEl.innerHTML = '';
+  const currentTab = '{{ tab }}';
+  const search = '{{ search|escapejs }}';
+  tabChoices.forEach(([t, label]) => {
+    const a = document.createElement('a');
+    a.href = `?tab=${t}&search=${encodeURIComponent(search)}`;
+    a.className = 'nh-tab' + (t === currentTab ? ' active' : '');
+    a.textContent = label;
+    tabsEl.appendChild(a);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,209 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+{% block sidebar_role %}Doctor Portal{% endblock %}
+{% block topbar_title %}<span>Doctor</span> Dashboard{% endblock %}
+
+{% block sidebar_nav %}
+<span class="nav-section-label">Main</span>
+<a href="{% url 'doctor_dashboard' %}" class="active"><i class="bi bi-house-door"></i> Dashboard</a>
+<a href="{% url 'doctor_dashboard' %}?tab=upcoming"><i class="bi bi-calendar-check"></i> Upcoming</a>
+<a href="{% url 'doctor_dashboard' %}?tab=past"><i class="bi bi-clock-history"></i> Past</a>
+<a href="{% url 'doctor_dashboard' %}?tab=completed"><i class="bi bi-check2-circle"></i> Completed</a>
+<span class="nav-section-label">Account</span>
+<a href="{% url 'doctor_profile_edit' %}"><i class="bi bi-person-badge"></i> My Profile</a>
+{% endblock %}
+
+{% block content %}
+{% if profile.verification_status == "PENDING" %}
+<div class="info-banner mb-4">
+  <i class="bi bi-hourglass-split me-2 text-warning"></i>
+  <strong>Pending Verification.</strong> An admin will approve your profile before patients can book appointments.
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#eef2ff"><i class="bi bi-calendar3" style="color:#4f46e5"></i></div>
+      <div><div class="nh-stat-value">{{ appointments.paginator.count }}</div><div class="nh-stat-label">Total (Filtered)</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#ecfdf5"><i class="bi bi-droplet-fill" style="color:#10b981"></i></div>
+      <div><div class="nh-stat-value">{{ blood_reports|length }}</div><div class="nh-stat-label">Blood Reports</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#f0f9ff"><i class="bi bi-person-badge" style="color:#0ea5e9"></i></div>
+      <div><div class="nh-stat-value">{{ profile.get_verification_status_display }}</div><div class="nh-stat-label">Status</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="nh-stat">
+      <div class="nh-stat-icon" style="background:#fef3c7"><i class="bi bi-stethoscope" style="color:#f59e0b"></i></div>
+      <div><div class="nh-stat-value">{% if profile.is_accepting_appointments %}Open{% else %}Closed{% endif %}</div><div class="nh-stat-label">Bookings</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Appointments Table -->
+  <div class="col-lg-8">
+    <div class="nh-card">
+      <div class="nh-card-header">
+        <h5><i class="bi bi-calendar3 me-2" style="color:#4f46e5"></i>My Appointments</h5>
+        <form method="get" class="d-flex gap-2" style="flex:0 0 auto">
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <input type="search" class="form-control form-control-sm" name="search" value="{{ search }}" placeholder="Search patient / ID…" style="width:160px">
+          <select class="form-select form-select-sm" name="status" style="width:130px" onchange="this.form.submit()">
+            <option value="">All Status</option>
+            {% for val,label in status_choices %}<option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+      <div class="nh-card-body" style="padding-top:0">
+        <!-- Tabs -->
+        <div class="nh-tabs my-3">
+          {% for t, label in tab_choices %}<a href="?tab={{ t }}&search={{ search }}&status={{ status_filter }}" class="nh-tab {% if tab == t %}active{% endif %}">{{ label }}</a>{% endfor %}
+        </div>
+
+        {% if appointments %}
+        <div class="table-responsive">
+          <table class="nh-table">
+            <thead>
+              <tr>
+                <th>Apt ID</th>
+                <th>Patient</th>
+                <th><a href="?tab={{ tab }}&sort=start_time&search={{ search }}" class="text-muted text-decoration-none">Date ↑↓</a></th>
+                <th>Status</th>
+                <th>Report</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in appointments %}
+              <tr>
+                <td><span class="apt-id-badge">{{ a.appointment_id }}</span></td>
+                <td class="fw-semibold">{{ a.patient.user.get_full_name|default:a.patient.user.username }}</td>
+                <td class="text-muted small">{{ a.start_time|date:"M d, Y H:i" }}</td>
+                <td><span class="badge-{{ a.status }}">{{ a.get_status_display }}</span></td>
+                <td>
+                  {% with rep=a.blood_reports.first %}
+                  {% if rep %}<a href="{{ rep.get_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-download"></i></a>
+                  {% else %}<span class="text-muted small">—</span>{% endif %}
+                  {% endwith %}
+                </td>
+                <td>
+                  <a href="{% url 'doctor_appointment_detail' a.appointment_id %}" class="btn btn-sm btn-outline-secondary py-0"><i class="bi bi-eye"></i></a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if appointments.has_other_pages %}
+        <nav class="mt-3">
+          <ul class="pagination pagination-sm justify-content-end mb-0">
+            {% if appointments.has_previous %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&search={{ search }}&status={{ status_filter }}&page={{ appointments.previous_page_number }}">‹</a></li>{% endif %}
+            <li class="page-item disabled"><a class="page-link">{{ appointments.number }}/{{ appointments.paginator.num_pages }}</a></li>
+            {% if appointments.has_next %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&search={{ search }}&status={{ status_filter }}&page={{ appointments.next_page_number }}">›</a></li>{% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="nh-empty mt-3">
+          <i class="bi bi-calendar-x"></i>
+          <p>No appointments found for this filter.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="col-lg-4">
+    <!-- Profile Card -->
+    <div class="nh-card mb-4">
+      <div class="nh-card-header"><h5><i class="bi bi-person-badge-fill me-2" style="color:#4f46e5"></i>My Profile</h5></div>
+      <div class="nh-card-body">
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2"><span class="nh-form-label">Name</span><strong>Dr. {{ request.user.get_full_name|default:request.user.username }}</strong></li>
+          <li class="mb-2"><span class="nh-form-label">Email</span><strong>{{ request.user.email }}</strong></li>
+          <li class="mb-2"><span class="nh-form-label">Verification</span><span class="badge-{{ profile.verification_status }}">{{ profile.get_verification_status_display }}</span></li>
+          <li class="mb-2"><span class="nh-form-label">Accepting</span>{% if profile.is_accepting_appointments %}<span class="badge-COMPLETED">Yes</span>{% else %}<span class="badge-CANCELLED">No</span>{% endif %}</li>
+          {% if profile.specialty %}<li class="mb-2"><span class="nh-form-label">Specialty</span><strong>{{ profile.specialty }}</strong></li>{% endif %}
+          {% if profile.medical_license_no %}<li><span class="nh-form-label">License</span><strong>{{ profile.medical_license_no }}</strong></li>{% endif %}
+        </ul>
+        <a href="{% url 'doctor_profile_edit' %}" class="btn btn-outline-primary btn-sm w-100 mt-3"><i class="bi bi-pencil me-1"></i>Edit Profile</a>
+      </div>
+    </div>
+
+    <!-- Upload Report -->
+    <div class="nh-card mb-4">
+      <div class="nh-card-header"><h5><i class="bi bi-cloud-upload-fill me-2" style="color:#4f46e5"></i>Upload Report</h5></div>
+      <div class="nh-card-body">
+        <form method="post" action="{% url 'upload_report' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="nh-form-label">Patient Appointment</label>
+            <select class="form-select form-select-sm" name="appointment_id">
+              <option value="">— Select appointment —</option>
+              {% for a in appointments %}
+              <option value="{{ a.appointment_id }}">{{ a.appointment_id }} — {{ a.patient.user.get_full_name|default:a.patient.user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="nh-form-label">Report File (PDF / Image)</label>
+            <input class="form-control form-control-sm" type="file" name="report_file" accept="application/pdf,image/*" required>
+          </div>
+          <button class="btn btn-primary w-100 btn-sm" type="submit"><i class="bi bi-upload me-1"></i>Upload Report</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Recent Blood Reports -->
+    {% if blood_reports %}
+    <div class="nh-card">
+      <div class="nh-card-header"><h5><i class="bi bi-droplet-fill text-danger me-2"></i>Recent Reports</h5></div>
+      <div class="nh-card-body" style="padding:0">
+        <ul class="list-group list-group-flush">
+          {% for r in blood_reports|slice:":5" %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+            <div>
+              <div class="small fw-semibold">{{ r.original_filename|truncatechars:25 }}</div>
+              <div class="small text-muted">{% if r.patient %}{{ r.patient.user.username }}{% endif %} · {{ r.uploaded_at|date:"M d" }}</div>
+            </div>
+            {% with url=r.get_file_url %}{% if url %}<a href="{{ url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-download"></i></a>{% endif %}{% endwith %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tabChoices = [['all','All'],['upcoming','Upcoming'],['past','Past'],['completed','Completed']];
+const tabsEl = document.querySelector('.nh-tabs');
+if(tabsEl){
+  tabsEl.innerHTML='';
+  const currentTab='{{ tab }}', search='{{ search|escapejs }}', statusFilter='{{ status_filter|escapejs }}';
+  tabChoices.forEach(([t,label])=>{
+    const a=document.createElement('a');
+    a.href=`?tab=${t}&search=${encodeURIComponent(search)}&status=${statusFilter}`;
+    a.className='nh-tab'+(t===currentTab?' active':'');
+    a.textContent=label;
+    tabsEl.appendChild(a);
+  });
+}
+</script>
+{% endblock %}
