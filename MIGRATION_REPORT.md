@@ -10,7 +10,7 @@ Configure Google Drive and n8n in Django admin before processing real patient da
 
 ## Before → after (summary)
 
-See [BEFORE_AFTER_PLAN.md](BEFORE_AFTER_PLAN.md) and [STACK_VERSION_AUDIT.md](STACK_VERSION_AUDIT.md).
+See the unified matrix in [STACK_VERSION_AUDIT.md](STACK_VERSION_AUDIT.md).
 
 | | Before (`ac092e9`) | After |
 | --- | --- | --- |
