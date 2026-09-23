@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from io import BytesIO
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
