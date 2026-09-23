@@ -1,785 +1,276 @@
-# 🏥 Hospital Blood Report Analyzer
+# Hospital Blood Report Analyzer
 
-[![Django](https://img.shields.io/badge/Django-5.1+-green.svg)](https://www.djangoproject.com/)
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791.svg)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p align="center">
+  <strong>Nexus Health</strong> — AI-assisted blood report workflows, appointments, and role-based hospital portals on Django 6.
+</p>
 
-A **production-grade Django application** designed to streamline hospital operations with intelligent blood report analysis, appointment management, and role-based access control. Built with modern best practices for healthcare data management and integration with AI-powered analysis pipelines.
+<p align="center">
+  <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/Django-6.1.1-092E20?style=flat-square&logo=django&logoColor=white" alt="Django 6.1.1"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.14.7-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.14.7"></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL 18"></a>
+  <a href="https://github.com/cdasadiya/ai-hackathon-sept-2026/actions"><img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Tests-31_passing-2EA043?style=flat-square" alt="31 tests">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT">
+</p>
 
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Deployment](#deployment)
-- [Integrations](#integrations)
-- [Contributing](#contributing)
-- [Author](#author)
+<p align="center">
+  <a href="https://github.com/cdasadiya/ai-hackathon-sept-2026">Repository</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#stack--migration-matrix">Stack matrix</a> ·
+  <a href="#api-overview">API</a> ·
+  <a href="#deployment">Deploy</a>
+</p>
 
 ---
 
-## 🎯 Overview
+## Overview
 
-The Hospital Blood Report Analyzer is an intelligent healthcare management system built on Django REST Framework. It provides:
+Production-oriented Django application for hospitals and hackathon demos: **patients** book visits and upload labs, **doctors** review appointments and reports, **admins** approve providers and configure **Google Drive** and **n8n** automation. A REST API with **JWT** supports integrations and mobile clients.
 
-- **User Management** with role-based access (Admin, Doctor, Patient)
-- **Appointment Scheduling** with anti-double-booking validation
-- **Blood Report Management** with PDF/image upload capabilities
-- **AI-Powered Analysis** integration with n8n workflows
-- **Google Drive Integration** for secure file storage
-- **REST API** with JWT authentication for third-party integrations
-- **Admin Dashboard** for comprehensive system management
-
-This system is designed to reduce administrative burden and provide intelligent insights into patient health through automated blood report analysis.
+| Role | Capabilities |
+| --- | --- |
+| **Patient** | Register, book appointments, upload PDF/image reports, view AI summaries |
+| **Doctor** | Manage schedule, update appointment status, clinical remarks, report review |
+| **Admin** | Doctor verification, dashboards, integration secrets, API tokens |
 
 ---
 
-## ✨ Key Features
+## Highlights
 
-### 👥 User Management & Authentication
-- **Custom User Model** with three role types:
-  - 👮 **Admin**: Full system control, configuration management
-  - 👨‍⚕️ **Doctor**: Patient management, appointment handling, report analysis
-  - 🧑‍🤝‍🧑 **Patient**: Self-service appointment booking, report uploads, health tracking
-- **Web Authentication**: Registration, login, logout, password reset
-- **JWT Endpoints**: Token-based API authentication for integrations
-- **Email Verification**: Optional email verification workflow
-- **Password Security**: Industry-standard password hashing with Django's authentication backend
-
-### 📅 Appointment Management
-- **Smart Booking System**: Schedule appointments with automatic conflict detection
-- **Anti-Double-Booking**: Triple-layer validation (model, form, API)
-- **Flexible Status Workflow**:
-  - Pending → Confirmed → Completed
-  - Cancelled/No-Show options
-- **30-Minute Minimum Notice**: Protection against backdated appointments
-- **Doctor Availability**: Toggle accepting appointments on/off
-- **Appointment ID Generation**: Human-readable format (APT-YYYY-NNNNNN)
-- **Doctor Remarks**: Post-appointment notes and observations
-
-### 📄 Blood Report Management
-- **Multiple File Formats**: PDF and image uploads
-- **Secure Storage**: Local file system + Google Drive backup
-- **Report Organization**: Patient-based folder structure
-- **Status Tracking**: PENDING → PROCESSING → DONE (or FAILED)
-- **AI Analysis Integration**: JSON field for AI-generated insights
-- **Health Reports**: Generated by n8n AI agents post-analysis
-
-### 🔗 External Integrations
-- **Google Drive API**: Automated report storage and organization
-- **n8n Webhooks**: Trigger AI analysis pipelines
-- **POST-Upload Callbacks**: Real-time notifications on report processing
-- **Service Account Auth**: Secure credential management via Django Admin
-
-### 🔐 Security & Access Control
-- **CSRF Protection**: Full CSRF middleware implementation
-- **JWT Authentication**: Secure token-based API access
-- **Permission System**: View-level and object-level permissions
-- **Audit Logging**: Track all significant system actions
-- **Admin-Only Configuration**: All sensitive configs managed via Django Admin
-- **Environment-based Secrets**: No credentials in code
-
-### 📊 Admin Dashboard
-- User management and role assignment
-- Appointment monitoring and control
-- Blood report tracking and analysis results
-- Integration configuration (Google Drive, n8n)
-- Audit log viewing
-- Doctor verification workflow
-- API token management
+- Custom **User** model with `ADMIN` / `DOCTOR` / `PATIENT` roles  
+- **Anti–double-booking** and 30-minute minimum lead time on appointments  
+- Human-readable IDs (`APT-YYYY-NNNNNN`)  
+- Blood reports: local media + optional **Drive v3** upload  
+- **n8n** webhook on upload; callback updates `HealthReport` and `ai_analysis`  
+- **DRF** viewsets, **simplejwt**, session auth for browser UI  
+- **WhiteNoise** + **Gunicorn 26** for production  
+- **31 automated tests**, **pip-audit** clean, **Docker** + **GitHub Actions**
 
 ---
 
-## 🛠️ Tech Stack
+## Stack
 
 | Layer | Technology | Version |
-|-------|-----------|---------|
-| **Backend Framework** | Django REST Framework | 5.1+ |
-| **API** | Django REST Framework | 3.16.0 |
-| **Authentication** | djangorestframework-simplejwt | 5.5.0 |
-| **Database** | PostgreSQL (recommended) | Latest |
-| **ORM** | Django ORM | 5.1+ |
-| **Server** | Gunicorn | 23.0.0 |
-| **Static Files** | Whitenoise | 6.9.0 |
-| **Google Cloud** | google-api-python-client | 2.128.0 |
-| **HTTP Client** | Requests | 2.32.3 |
-| **Environment** | python-dotenv | 1.0.1 |
-| **Database URL Parser** | dj-database-url | 3.0.1 |
-| **PostgreSQL Adapter** | psycopg[binary] | 3.2.12 |
+| --- | --- | --- |
+| Runtime | Python | 3.14.7 |
+| Framework | Django | 6.1.1 |
+| API | Django REST Framework | 3.18.1 |
+| Auth | djangorestframework-simplejwt | 5.5.1 |
+| Database | PostgreSQL | 18.x |
+| Server | Gunicorn | 26.2.0 |
+| Static files | WhiteNoise | 6.12.0 |
+| Integrations | google-api-python-client, requests | 2.200.0 / 2.34.2 |
+
+Frontend assets load from CDN: **Bootstrap 5.3.8**, **Bootstrap Icons 1.13.1**, **Font Awesome 7.3.1**.
 
 ---
 
-## 🏗️ System Architecture
+## Stack & migration matrix
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  Client (Web/Mobile)                     │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP/REST
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│              Django Application                          │
-├─────────────────────────────────────────────────────────┤
-│  • User Authentication & Authorization                   │
-│  • Role-Based Access Control (RBAC)                     │
-│  • Appointment Scheduling Engine                        │
-│  • Blood Report Processing                              │
-│  • API Endpoints (REST + JWT)                           │
-└──────┬──────────────┬──────────────┬────────────────────┘
-       │              │              │
-       │              │              │
-   ┌───▼──┐      ┌───▼──┐       ┌──▼────┐
-   │  DB  │      │Google│       │ n8n   │
-   │ (PG) │      │Drive │       │Workflow
-   └──────┘      └──────┘       └───────┘
-```
+Before, target, and after versions live in one place:
 
-### Key Components
+**[STACK_VERSION_AUDIT.md](STACK_VERSION_AUDIT.md)** — unified migration matrix (baseline `ac092e9` → current release targets → installed pins).
 
-- **Models Layer**: User, DoctorProfile, PatientProfile, Appointment, BloodReport, HealthReport
-- **Views Layer**: Authentication, CRUD operations, file uploads, status workflows
-- **Services Layer**: Google Drive integration, n8n webhook triggers, report processing
-- **API Layer**: DRF viewsets, serializers, JWT authentication
-- **Admin Layer**: Django admin with custom actions and filters
+Additional engineering records:
+
+| Document | Description |
+| --- | --- |
+| [MIGRATION_REPORT.md](MIGRATION_REPORT.md) | Final migration summary |
+| [MIGRATION_PLAN.md](MIGRATION_PLAN.md) | Original plan |
+| [FEATURE_INVENTORY.md](FEATURE_INVENTORY.md) | Features and routes |
+| [FEATURE_TEST_REPORT.md](FEATURE_TEST_REPORT.md) | Test evidence |
 
 ---
 
-## 💾 Installation
+## Architecture
+
+```text
+ Browser / API clients
+         │
+         ▼
+┌─────────────────────────────┐
+│  Django 6 + DRF + JWT       │
+│  Roles · Appointments ·     │
+│  Reports · Admin            │
+└─────┬───────────┬───────────┘
+      │           │
+      ▼           ▼
+ PostgreSQL   Google Drive + n8n
+```
+
+---
+
+## Quick start
 
 ### Prerequisites
-- Python 3.12+
-- PostgreSQL 12+ (recommended) or SQLite for development
-- pip & virtualenv
+
+- Python **3.14.7**
+- PostgreSQL **18+** (recommended) or SQLite for quick dev
 - Git
 
-### Local Setup
+### Local setup
 
-**1. Clone the Repository**
 ```bash
-git clone https://github.com/cdasadiya/hospital_blood_report_analyzer.git
-cd hospital_blood_report_analyzer
-```
+git clone https://github.com/cdasadiya/ai-hackathon-sept-2026.git
+cd ai-hackathon-sept-2026
 
-**2. Create Virtual Environment**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
+python3.14 -m venv venv
+source venv/bin/activate
 
-**3. Install Dependencies**
-```bash
 pip install --upgrade pip
 pip install -r requirements.txt
-```
 
-**4. Create Environment File**
-```bash
-cp .env.example .env  # Create this if not present
-```
+cp .env.example .env
+# Edit SECRET_KEY and DATABASE_URL as needed
 
-**5. Run Migrations**
-```bash
-python manage.py makemigrations
 python manage.py migrate
-```
-
-**6. Create Superuser**
-```bash
-python manage.py createsuperuser
-# Follow prompts to create admin account
-```
-
-**7. (Optional) Seed Demo Users**
-```bash
-python manage.py seed_demo_users
-```
-
-**8. Run Development Server**
-```bash
+python manage.py seed_demo_users   # optional demo accounts
 python manage.py runserver
 ```
 
-Visit `http://localhost:8000/` in your browser.
+Open **http://127.0.0.1:8000/**.
+
+Demo users are created by `seed_demo_users` (see command output for usernames; default password is set in that command).
+
+### Docker (PostgreSQL 18 + Gunicorn)
+
+```bash
+docker compose up --build
+```
+
+App: **http://localhost:8000**
+
+### Developer tooling
+
+```bash
+pip install -r requirements-dev.txt
+python manage.py test app
+pip-audit -r requirements.txt
+```
+
+CI runs the same checks on push/PR to `main` (see `.github/workflows/ci.yml`).
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-### Environment Variables
+Copy `.env.example` to `.env`. Important variables:
 
-Create a `.env` file in the project root:
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Django secret (required in production) |
+| `DEBUG` | `True` locally, `False` on Render |
+| `DATABASE_URL` | Postgres connection string |
+| `REQUIRE_POSTGRES` | `True` on Render |
+| `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` | Host and CSRF allow lists |
+| `HEALTHZ_RUN_MIGRATIONS` | Default `false`; avoid migrate on every health probe |
+| `SEED_DEMO_USERS` | Control demo seed in `build.sh` |
 
-```env
-# Core Django Settings
-SECRET_KEY=your-secret-key-here
-DEBUG=False
-DJANGO_SETTINGS_MODULE=config.settings
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/hospital_db
-REQUIRE_POSTGRES=True
-
-# Security
-ALLOWED_HOSTS=localhost,127.0.0.1,.onrender.com
-CSRF_TRUSTED_ORIGINS=https://*.onrender.com
-
-# Email Configuration
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-
-# JWT Token Lifetime (in minutes)
-JWT_ACCESS_TOKEN_LIFETIME_MINUTES=60
-JWT_REFRESH_TOKEN_LIFETIME_DAYS=30
-
-# Google Drive Integration (Admin-managed)
-GOOGLE_SERVICE_ACCOUNT_JSON={}
-GOOGLE_DRIVE_ROOT_FOLDER_ID=your-folder-id
-
-# n8n Webhook Configuration
-N8N_BLOOD_REPORT_WEBHOOK_URL=https://your-n8n-instance.com/webhook/blood-report
-N8N_WEBHOOK_SECRET=your-webhook-secret
-N8N_CALLBACK_TOKEN=your-callback-token
-
-# Post-Upload Webhook (Legacy)
-POST_UPLOAD_WEBHOOK_URL=
-POST_UPLOAD_WEBHOOK_TOKEN=
-```
-
-### Django Admin Configuration
-
-1. Go to `http://localhost:8000/admin/`
-2. Login with your superuser account
-3. Navigate to **Integration Configuration** to set:
-   - Google Service Account JSON credentials
-   - Google Drive folder structure
-   - n8n webhook URLs and secrets
-   - JWT token lifetimes
+**Integration secrets** (Google service account JSON, n8n URLs, callback token) are stored in Django Admin → **Integration Configuration**, not in `.env`.
 
 ---
 
-## 🚀 Usage
+## API overview
 
-### User Workflows
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/token/` | Obtain JWT access + refresh |
+| POST | `/api/token/refresh/` | Refresh access token |
+| POST | `/api/register/` | Register user (not ADMIN) |
+| CRUD | `/api/appointments/` | Role-scoped appointments |
+| POST | `/api/appointments/{id}/update_status/` | Doctor/admin status update |
+| CRUD | `/api/reports/` | Blood reports |
+| POST | `/api/n8n/health-report-callback/` | n8n callback (Bearer token) |
 
-#### 👨‍🤝‍🧑 Patient Workflow
-1. **Register**: Create patient account at `/register/`
-2. **Login**: Access patient dashboard
-3. **Book Appointment**: Select doctor and time slot
-4. **Upload Report**: Submit blood report PDF/image
-5. **View Analysis**: Check AI-generated health insights
+Example token request:
 
-#### 👨‍⚕️ Doctor Workflow
-1. **Login**: Access doctor dashboard
-2. **View Appointments**: See scheduled patient appointments
-3. **Manage Availability**: Toggle accepting new appointments
-4. **Add Remarks**: Document notes after each appointment
-5. **Review Reports**: Analyze patient blood reports
-
-#### 👮 Admin Workflow
-1. **System Setup**: Configure integrations in admin panel
-2. **Verify Doctors**: Approve doctor registrations
-3. **Monitor System**: Track all appointments and reports
-4. **Manage Credentials**: Update Google Drive and n8n configurations
-5. **View Audit Logs**: Track all system activities
-
-### API Endpoints
-
-#### Authentication
 ```bash
-# Obtain JWT Token
-POST /api/token/
-Content-Type: application/json
-
-{
-  "username": "doctor1",
-  "password": "password123"
-}
-
-# Refresh Token
-POST /api/token/refresh/
-Content-Type: application/json
-
-{
-  "refresh": "your-refresh-token"
-}
-```
-
-#### Appointments
-```bash
-# List Appointments
-GET /api/appointments/
-Authorization: Bearer <access-token>
-
-# Create Appointment
-POST /api/appointments/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-
-{
-  "doctor_id": 1,
-  "start_time": "2026-06-15T10:00:00Z",
-  "end_time": "2026-06-15T10:30:00Z",
-  "notes": "Routine checkup"
-}
-
-# Update Appointment Status
-POST /api/appointments/{id}/update_status/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-
-{
-  "status": "CONFIRMED"
-}
-```
-
-#### Blood Reports
-```bash
-# Upload Blood Report
-POST /api/reports/
-Authorization: Bearer <access-token>
-Content-Type: multipart/form-data
-
-file: <binary-pdf-file>
-appointment_id: <appointment-id>
-
-# List Reports
-GET /api/reports/
-Authorization: Bearer <access-token>
-```
-
----
-
-## 📁 Project Structure
-
-```
-hospital_blood_report_analyzer/
-├── app/                           # Main Django application
-│   ├── migrations/               # Database migrations
-│   ├── management/               # Custom management commands
-│   ├── fixtures/                 # Test data fixtures
-│   ├── admin.py                  # Django admin customization
-│   ├── forms.py                  # HTML forms for web interface
-│   ├── models.py                 # Database models (User, Appointment, etc.)
-│   ├── permissions.py            # Custom permission classes
-│   ├── serializers.py            # DRF API serializers
-│   ├── services.py               # External integrations (Google Drive, n8n)
-│   ├── tests.py                  # Unit & integration tests
-│   ├── urls.py                   # URL routing
-│   └── views.py                  # Business logic & API views
-├── config/                        # Django configuration
-│   ├── settings.py               # Environment-aware settings
-│   ├── urls.py                   # Root URL configuration
-│   ├── wsgi.py                   # WSGI application
-│   └── __init__.py
-├── templates/                     # HTML templates
-│   ├── base.html                 # Base template
-│   ├── register.html             # Registration page
-│   ├── login.html                # Login page
-│   ├── dashboard.html            # User dashboard
-│   └── ...
-├── media/                         # User-uploaded files (development)
-│   └── blood_reports/            # Blood report storage
-├── staticfiles/                   # Compiled static assets
-├── manage.py                      # Django CLI
-├── requirements.txt               # Python dependencies
-├── Procfile                       # Heroku/Render deployment config
-├── render.yaml                    # Render deployment config
-├── build.sh                       # Build script for deployment
-├── .gitignore                     # Git ignore rules
-├── .env.example                   # Environment template
-└── README.md                      # This file
-```
-
-### Key Model Details
-
-**User Model**
-- Custom AbstractUser with role field
-- Roles: ADMIN, DOCTOR, PATIENT
-- Email verification support
-- Account activation toggle
-
-**Appointment Model**
-- Patient ↔ Doctor relationship
-- Start/end time with overlap detection
-- Status workflow (PENDING → CONFIRMED → COMPLETED)
-- Auto-generated appointment IDs
-- 30-minute minimum booking window
-
-**BloodReport Model**
-- File storage (local + Google Drive)
-- PDF and image support
-- AI analysis JSON field
-- n8n processing status tracking
-- Patient-based folder organization
-
-**DoctorProfile & PatientProfile**
-- Extended user information
-- Doctor: Specialty, department, medical license, verification status
-- Patient: Contact, DOB, blood group, emergency contact
-
----
-
-## 🌐 Deployment
-
-### Option 1: Render.com (Recommended)
-
-**1. Connect Your Repository**
-- Push code to GitHub
-- Go to [render.com](https://render.com)
-- Create new Web Service from GitHub
-
-**2. Auto-Configuration**
-The `render.yaml` file automatically configures:
-- Python 3.12.4 environment
-- PostgreSQL database
-- Environment variables
-- Build and start commands
-
-**3. Environment Variables** (set in Render dashboard)
-- `SECRET_KEY`: Auto-generated or provide your own
-- `DEBUG`: Set to "False" for production
-- Database credentials: Auto-populated from PostgreSQL service
-
-**4. Deploy**
-```bash
-git push origin main  # Render auto-deploys on push
-```
-
-### Option 2: Docker Deployment
-
-**Build Image**
-```bash
-docker build -t hospital-analyzer:latest .
-```
-
-**Run Container**
-```bash
-docker run -d \
-  -e SECRET_KEY="your-secret" \
-  -e DATABASE_URL="postgresql://..." \
-  -p 8000:8000 \
-  hospital-analyzer:latest
-```
-
-### Option 3: Traditional VPS (Ubuntu/Debian)
-
-**1. Install Dependencies**
-```bash
-sudo apt-get update
-sudo apt-get install python3.12 python3.12-venv postgresql postgresql-contrib nginx
-```
-
-**2. Clone & Setup**
-```bash
-git clone <repo-url>
-cd hospital_blood_report_analyzer
-python3.12 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**3. Configure Systemd Service**
-```ini
-[Unit]
-Description=Hospital Blood Report Analyzer
-After=network.target postgresql.service
-
-[Service]
-Type=notify
-User=www-data
-WorkingDirectory=/path/to/app
-ExecStart=/path/to/app/venv/bin/gunicorn config.wsgi:application --workers 4 --bind unix:/run/gunicorn.sock
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**4. Configure Nginx**
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    
-    location /static/ {
-        alias /path/to/app/staticfiles/;
-    }
-    
-    location /media/ {
-        alias /path/to/app/media/;
-    }
-    
-    location / {
-        proxy_pass http://unix:/run/gunicorn.sock;
-    }
-}
-```
-
-**5. Enable HTTPS (Let's Encrypt)**
-```bash
-sudo certbot --nginx -d yourdomain.com
-```
-
----
-
-## 🔗 Integrations
-
-### Google Drive Integration
-
-**Setup Steps:**
-
-1. **Create Google Cloud Project**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create new project
-   - Enable Google Drive API
-
-2. **Create Service Account**
-   - Navigate to Service Accounts
-   - Create new service account
-   - Create JSON key file
-
-3. **Configure in Django Admin**
-   - Go to `/admin/app/integrationconfig/`
-   - Paste service account JSON
-   - Set root folder ID
-
-4. **Folder Structure**
-   - Root Folder (your ID)
-   - └── Patient blood reports/
-   - └── Patient health reports/
-
-### n8n Workflow Integration
-
-**Setup Steps:**
-
-1. **Create n8n Workflow**
-   - Design workflow to accept blood report webhooks
-   - Process/analyze report
-   - Return results to Django
-
-2. **Configure Webhook in Django Admin**
-   - Set n8n webhook URL
-   - Set webhook secret token
-   - Set callback token (for n8n → Django)
-
-3. **Webhook Payload Structure**
-```json
-{
-  "report_id": 123,
-  "patient_id": 45,
-  "file_url": "https://...",
-  "file_name": "blood_report.pdf",
-  "upload_time": "2026-05-27T10:30:00Z"
-}
-```
-
-4. **Callback Endpoint**
-   - Django listens on `/api/reports/callback/`
-   - Expects n8n callback token in header
-   - Updates report status to DONE or FAILED
-
----
-
-## 🧪 Testing
-
-**Run Unit Tests**
-```bash
-python manage.py test
-```
-
-**Run with Coverage**
-```bash
-coverage run --source='.' manage.py test
-coverage report
-```
-
-**Test API Endpoints**
-```bash
-# Using curl
-curl -X POST http://localhost:8000/api/token/ \
+curl -X POST http://127.0.0.1:8000/api/token/ \
   -H "Content-Type: application/json" \
-  -d '{"username":"doctor1","password":"pass123"}'
+  -d '{"username":"patient1","password":"Pass1234!"}'
+```
 
-# Using httpie
-http POST localhost:8000/api/token/ username=doctor1 password=pass123
+Web routes include `/login/`, `/register/`, `/patient/dashboard/`, `/doctor/dashboard/`, `/dashboard/admin/`, and `/admin/`.
+
+---
+
+## Project structure
+
+```text
+ai-hackathon-sept-2026/
+├── app/                 # Models, views, API, services, tests
+├── config/              # settings, urls, wsgi
+├── templates/           # Bootstrap UI
+├── .github/workflows/   # CI
+├── Dockerfile
+├── docker-compose.yml
+├── render.yaml          # Render blueprint
+├── build.sh             # Render build
+├── requirements.txt
+├── requirements-dev.txt
+└── STACK_VERSION_AUDIT.md
 ```
 
 ---
 
-## 🛡️ Security Features
+## Deployment
 
-- ✅ **CSRF Protection**: Middleware enabled for all POST requests
-- ✅ **SQL Injection Prevention**: Django ORM parameterized queries
-- ✅ **XSS Protection**: Django template auto-escaping
-- ✅ **CORS Ready**: Configurable cross-origin requests
-- ✅ **Secure Cookies**: HTTP-only, secure flags on production
-- ✅ **Password Hashing**: PBKDF2 with SHA-256 (Django default)
-- ✅ **JWT Tokens**: Signed tokens with expiration
-- ✅ **File Upload Validation**: Type and size restrictions
-- ✅ **Audit Logging**: All admin actions tracked
-- ✅ **Role-Based Access**: Granular permission system
+### Render (recommended)
 
----
+1. Connect [github.com/cdasadiya/ai-hackathon-sept-2026](https://github.com/cdasadiya/ai-hackathon-sept-2026).  
+2. Use **`render.yaml`**: Python **3.14.7**, Postgres, Gunicorn start command.  
+3. Set `DEBUG=False`; `SECRET_KEY` and `DATABASE_URL` are wired in the blueprint.  
+4. Push to the branch Render tracks (e.g. `main` after merge).
 
-## 📝 API Response Examples
+### Manual / VPS
 
-**Successful Appointment Creation**
-```json
-{
-  "id": 1,
-  "appointment_id": "APT-2026-000001",
-  "patient": {
-    "id": 5,
-    "name": "John Doe"
-  },
-  "doctor": {
-    "id": 2,
-    "name": "Dr. Jane Smith",
-    "specialty": "Cardiology"
-  },
-  "start_time": "2026-06-15T10:00:00Z",
-  "end_time": "2026-06-15T10:30:00Z",
-  "status": "PENDING",
-  "notes": "Routine checkup",
-  "created_at": "2026-05-27T12:00:00Z"
-}
-```
-
-**Blood Report Upload Response**
-```json
-{
-  "id": 8,
-  "original_filename": "patient_blood_report_May2026.pdf",
-  "file_type": "PDF",
-  "uploaded_at": "2026-05-27T14:30:00Z",
-  "n8n_status": "PENDING",
-  "drive_file_id": "1a2b3c4d5e6f",
-  "drive_link": "https://drive.google.com/file/d/1a2b3c4d5e6f/view"
-}
-```
-
-**JWT Token Response**
-```json
-{
-  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-}
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Database Connection Issues
 ```bash
-# Check DATABASE_URL format
-echo $DATABASE_URL
-
-# Run migrations with verbose output
-python manage.py migrate --verbosity 2
-
-# Reset database (development only!)
-python manage.py flush --no-input
-```
-
-### Google Drive Integration Not Working
-1. Verify service account JSON is valid
-2. Check if Google Drive API is enabled in Cloud Console
-3. Ensure service account has access to root folder
-4. Review Django logs: `tail -f /var/log/django.log`
-
-### n8n Webhook Not Triggering
-1. Verify webhook URL is correct in IntegrationConfig
-2. Check if Django can reach n8n instance (network/firewall)
-3. Verify webhook secret token matches
-4. Review n8n logs for incoming requests
-
-### Static Files Not Loading in Production
-```bash
-# Regenerate static files
-python manage.py collectstatic --noinput
-
-# Check Whitenoise configuration
-python manage.py compress
+pip install -r requirements.txt
+python manage.py migrate --no-input
+python manage.py collectstatic --no-input
+gunicorn config.wsgi:application --workers 2 --timeout 120 --bind 0.0.0.0:8000
 ```
 
 ---
 
-## 📚 Additional Resources
+## Integrations
 
-- [Django Documentation](https://docs.djangoproject.com/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Google Drive API Docs](https://developers.google.com/drive/api)
-- [n8n Documentation](https://docs.n8n.io/)
+1. **Google Drive** — Service account JSON and root folder ID in Integration Config; uploads use Drive API **v3**.  
+2. **n8n** — Blood report webhook URL + secret; callback to `/api/n8n/health-report-callback/` with `n8n_callback_token`.  
+3. Configure both in **/admin/** before processing real patient files in production.
 
 ---
 
-## 🤝 Contributing
+## Security
 
-Contributions are welcome! Please follow these steps:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/your-feature`
-3. **Make your changes** and test thoroughly
-4. **Commit with clear messages**: `git commit -m "Add feature: description"`
-5. **Push to branch**: `git push origin feature/your-feature`
-6. **Open a Pull Request** with detailed description
-
-### Code Style
-- Follow PEP 8 guidelines
-- Use meaningful variable names
-- Add docstrings to functions
-- Write unit tests for new features
+- CSRF on web forms; JWT for API  
+- Role-based dashboards and object-level API scoping  
+- Upload type and size limits (10 MB, PDF/images)  
+- Production: secure cookies, HSTS, SSL redirect when `DEBUG=False`  
+- No credentials committed; use Admin + environment variables  
 
 ---
 
-## 📄 License
+## Contributing
 
-This project is licensed under the **MIT License** - see LICENSE file for details.
+1. Fork the repo  
+2. Create a branch: `git checkout -b feature/your-feature`  
+3. Run tests: `python manage.py test app`  
+4. Open a pull request against `main`  
 
 ---
 
-## 👤 Author
+## Author
 
 **Chaitanya Dasadiya**
 
-- LinkedIn: [linkedin.com/in/chaitanya-dasadiya](https://www.linkedin.com/in/chaitanya-dasadiya)
-- GitHub: [@cdasadiya](https://github.com/cdasadiya)
-- Email: [Connect via LinkedIn](https://www.linkedin.com/in/chaitanya-dasadiya)
+- GitHub: [@cdasadiya](https://github.com/cdasadiya)  
+- LinkedIn: [chaitanya-dasadiya](https://www.linkedin.com/in/chaitanya-dasadiya)
 
 ---
 
-## 🙏 Acknowledgments
+## License
 
-- Django & Django REST Framework communities
-- Google Cloud & Drive API teams
-- n8n for workflow automation
-- Render.com for easy deployment
+MIT License — see [LICENSE](LICENSE) if present in the repository.
 
----
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-
-1. **GitHub Issues**: [Create an issue](https://github.com/cdasadiya/hospital_blood_report_analyzer/issues)
-2. **LinkedIn**: Connect with the author
-3. **Documentation**: Check the project wiki
-
----
-
-**Built with ❤️ for better healthcare management**
-
-Last Updated: May 27, 2026
+<p align="center"><sub>Last updated: September 2026 · Stack audit: <a href="STACK_VERSION_AUDIT.md">STACK_VERSION_AUDIT.md</a></sub></p>

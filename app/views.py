@@ -53,18 +53,21 @@ def home(request):
     return render(request, "home.html", {})
 
 def healthz(request):
-    from django.core.management import call_command
-    import traceback
-    try: call_command("migrate", interactive=False)
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)})
+    if settings.HEALTHZ_RUN_MIGRATIONS:
+        from django.core.management import call_command
+        try:
+            call_command("migrate", interactive=False, verbosity=0)
+        except Exception as exc:
+            return JsonResponse({"status": "error", "message": str(exc)}, status=503)
     with connection.cursor() as cursor:
-        cursor.execute("SELECT 1"); cursor.fetchone()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
     try:
         from .models import IntegrationConfig
         IntegrationConfig.get_config()
-    except Exception: pass
-    return JsonResponse({"status": "ok", "message": "Migrations applied successfully."})
+    except Exception:
+        pass
+    return JsonResponse({"status": "ok", "message": "Database reachable."})
 
 @login_required
 def debug_admin(request):
@@ -122,10 +125,10 @@ class RegisterView(View):
                 if user.role == User.Role.DOCTOR: return redirect("doctor_dashboard")
                 return redirect("patient_dashboard")
             return render(request, self.template_name, {"form": form})
-        except Exception as e:
-            import traceback
-            from django.http import HttpResponse
-            return HttpResponse(f"Error: {e}\n\n{traceback.format_exc()}", content_type="text/plain")
+        except Exception:
+            logger.exception("Registration failed")
+            messages.error(request, "Registration could not be completed. Please try again.")
+            return render(request, self.template_name, {"form": RegistrationForm(request.POST)})
 
 def custom_logout(request):
     from django.contrib.auth import logout
@@ -516,7 +519,10 @@ def n8n_health_report_callback(request):
     expected_token = config.n8n_callback_token
     auth_header = request.META.get("HTTP_AUTHORIZATION", "")
     provided_token = auth_header.removeprefix("Bearer ").strip()
-    if expected_token and provided_token != expected_token:
+    if not expected_token:
+        logger.error("n8n callback rejected because no callback token is configured.")
+        return JsonResponse({"detail": "Callback token is not configured."}, status=503)
+    if provided_token != expected_token:
         logger.warning("n8n callback: invalid token.")
         return JsonResponse({"detail": "Unauthorized"}, status=401)
     try: data = _json.loads(request.body)
@@ -595,10 +601,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if user.role == User.Role.PATIENT: return Appointment.objects.filter(patient__user=user)
         return Appointment.objects.none()
     def perform_create(self, serializer):
-        start_time = serializer.validated_data.get("start_time")
-        if start_time and start_time <= timezone.now():
-            raise ValidationError("Appointment start time must be in the future.")
-        serializer.save()
+        profile = PatientProfile.objects.filter(user=self.request.user).first()
+        if profile is None:
+            raise PermissionDenied("A patient profile is required to book an appointment.")
+        candidate = Appointment(
+            patient=profile,
+            **{key: value for key, value in serializer.validated_data.items() if key != "patient"},
+        )
+        try:
+            candidate.full_clean()
+        except ValidationError as exc:
+            from rest_framework.serializers import ValidationError as SerializerValidationError
+            detail = exc.message_dict if getattr(exc, "message_dict", None) else exc.messages
+            raise SerializerValidationError(detail)
+        serializer.save(patient=profile)
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
         appt = self.get_object()
@@ -615,6 +631,11 @@ class BloodReportViewSet(viewsets.ModelViewSet):
     queryset = BloodReport.objects.select_related("uploader", "appointment").all()
     serializer_class = BloodReportSerializer
     def get_permissions(self): return [permissions.IsAuthenticated()]
+    def perform_create(self, serializer):
+        extra = {"uploader": self.request.user}
+        if self.request.user.role == User.Role.PATIENT:
+            extra["patient"] = PatientProfile.objects.filter(user=self.request.user).first()
+        serializer.save(**extra)
     def get_queryset(self):
         user = self.request.user
         if user.role == User.Role.ADMIN: return BloodReport.objects.all()

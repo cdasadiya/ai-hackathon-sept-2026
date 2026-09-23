@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hospital
+          POSTGRES_PASSWORD: hospital
+          POSTGRES_DB: hospital_blood_report
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hospital -d hospital_blood_report"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://hospital:hospital@localhost:5432/hospital_blood_report
+      SECRET_KEY: ci-test-secret-key-not-for-production-use-only
+      DEBUG: "False"
+      REQUIRE_POSTGRES: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      HEALTHZ_RUN_MIGRATIONS: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.14.7
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.7"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Ruff (undefined names in tests and entrypoints)
+        run: ruff check app/test_features.py app/tests.py manage.py config/wsgi.py --select F
+
+      - name: pip-audit (production deps)
+        run: pip-audit -r requirements.txt
+
+      - name: Django checks
+        run: |
+          python manage.py check --deploy
+          python manage.py migrate --no-input
+
+      - name: Tests
+        env:
+          # Test client is plain HTTP. Production defaults stay on for check --deploy.
+          SECURE_SSL_REDIRECT: "False"
+          SESSION_COOKIE_SECURE: "False"
+          CSRF_COOKIE_SECURE: "False"
+        run: python manage.py test app --verbosity 2

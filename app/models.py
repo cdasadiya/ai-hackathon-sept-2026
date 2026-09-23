@@ -101,9 +101,11 @@ class Appointment(models.Model):
         return f"APT-{year}-{self.pk:06d}"
 
     def save(self, *args, **kwargs):
-        # First save to get a pk, then generate appointment_id
+        # Django 6 accepts keyword arguments only on Model.save().
+        if args:
+            raise TypeError("Appointment.save() accepts keyword arguments only.")
         is_new = self.pk is None
-        super().save(*args, **kwargs)
+        super().save(**kwargs)
         if is_new and not self.appointment_id:
             self.appointment_id = self.generate_appointment_id()
             Appointment.objects.filter(pk=self.pk).update(appointment_id=self.appointment_id)
@@ -318,8 +320,10 @@ class IntegrationConfig(models.Model):
 
     def save(self, *args, **kwargs):
         """Enforce singleton: always use pk=1."""
+        if args:
+            raise TypeError("IntegrationConfig.save() accepts keyword arguments only.")
         self.pk = 1
-        super().save(*args, **kwargs)
+        super().save(**kwargs)
 
     def delete(self, *args, **kwargs):
         """Prevent deletion of the singleton."""

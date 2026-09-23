@@ -1,4 +1,4 @@
-from django.contrib.auth.views import LogoutView, PasswordResetDoneView, PasswordResetView
+from django.contrib.auth.views import PasswordResetDoneView, PasswordResetView
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -32,8 +32,8 @@ urlpatterns = [
     path("password-reset/done/", PasswordResetDoneView.as_view(), name="password_reset_done"),
     # Admin
     path("dashboard/admin/", admin_dashboard, name="admin_dashboard"),
-    path("admin/doctor/<int:doctor_id>/approve/", approve_doctor, name="approve_doctor"),
-    path("admin/doctor/<int:doctor_id>/reject/", reject_doctor, name="reject_doctor"),
+    path("dashboard/admin/doctor/<int:doctor_id>/approve/", approve_doctor, name="approve_doctor"),
+    path("dashboard/admin/doctor/<int:doctor_id>/reject/", reject_doctor, name="reject_doctor"),
     # Patient
     path("patient/dashboard/", patient_dashboard, name="patient_dashboard"),
     path("patient/book/", book_appointment, name="book_appointment"),

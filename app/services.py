@@ -232,6 +232,10 @@ def trigger_n8n_webhook(payload: dict) -> dict:
 
 def trigger_n8n_webhook_async(payload: dict) -> None:
     """Fire trigger_n8n_webhook in a background thread so it doesn't block the request."""
+    config = _get_integration_config()
+    if not config.n8n_blood_report_webhook_url:
+        trigger_n8n_webhook(payload)
+        return
     t = threading.Thread(target=trigger_n8n_webhook, args=(payload,), daemon=True)
     t.start()
 

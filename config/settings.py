@@ -28,6 +28,17 @@ SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY") or "dev-i
 ALLOWED_HOSTS = get_list_env("ALLOWED_HOSTS", ".onrender.com,localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = get_list_env("CSRF_TRUSTED_ORIGINS", "https://*.onrender.com")
 
+HEALTHZ_RUN_MIGRATIONS = get_bool_env("HEALTHZ_RUN_MIGRATIONS", False)
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = get_bool_env("SECURE_SSL_REDIRECT", True)
+    SECURE_HSTS_PRELOAD = get_bool_env("SECURE_HSTS_PRELOAD", True)
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = get_bool_env("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
+    # Plain HTTP (Docker Compose, CI) must opt out. Render leaves these unset.
+    SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", True)
+    CSRF_COOKIE_SECURE = get_bool_env("CSRF_COOKIE_SECURE", True)
+
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
     "rest_framework", "rest_framework.authtoken", "app",
@@ -88,8 +99,10 @@ LOGOUT_REDIRECT_URL = "/"
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
+        # JWT is first so unauthenticated API calls receive 401 with a Bearer
+        # challenge. Session authentication remains available for the browser.
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }

@@ -1,0 +1,10 @@
+line-length = 120
+target-version = "py314"
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"app/views.py" = ["E402", "F401"]
+"app/migrations/*" = ["E501"]
