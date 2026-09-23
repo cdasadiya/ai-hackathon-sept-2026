@@ -1,7 +1,7 @@
 # 🏥 Hospital Blood Report Analyzer
 
-[![Django](https://img.shields.io/badge/Django-5.1+-green.svg)](https://www.djangoproject.com/)
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-6.1.1-green.svg)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/Python-3.14.7-blue.svg)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -103,18 +103,19 @@ This system is designed to reduce administrative burden and provide intelligent 
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| **Backend Framework** | Django REST Framework | 5.1+ |
-| **API** | Django REST Framework | 3.16.0 |
-| **Authentication** | djangorestframework-simplejwt | 5.5.0 |
-| **Database** | PostgreSQL (recommended) | Latest |
-| **ORM** | Django ORM | 5.1+ |
-| **Server** | Gunicorn | 23.0.0 |
-| **Static Files** | Whitenoise | 6.9.0 |
-| **Google Cloud** | google-api-python-client | 2.128.0 |
-| **HTTP Client** | Requests | 2.32.3 |
-| **Environment** | python-dotenv | 1.0.1 |
-| **Database URL Parser** | dj-database-url | 3.0.1 |
-| **PostgreSQL Adapter** | psycopg[binary] | 3.2.12 |
+| **Runtime** | Python | 3.14.7 |
+| **Backend Framework** | Django | 6.1.1 |
+| **API** | Django REST Framework | 3.18.1 |
+| **Authentication** | djangorestframework-simplejwt | 5.5.1 |
+| **Database** | PostgreSQL | 18.6 |
+| **ORM** | Django ORM | 6.1.1 |
+| **Server** | Gunicorn | 26.2.0 |
+| **Static Files** | Whitenoise | 6.12.0 |
+| **Google Cloud** | google-api-python-client | 2.200.0 |
+| **HTTP Client** | Requests | 2.34.2 |
+| **Environment** | python-dotenv | 1.2.3 |
+| **Database URL Parser** | dj-database-url | 3.1.2 |
+| **PostgreSQL Adapter** | psycopg[binary] | 3.3.6 |
 
 ---
 
@@ -156,8 +157,9 @@ This system is designed to reduce administrative burden and provide intelligent 
 ## 💾 Installation
 
 ### Prerequisites
-- Python 3.12+
-- PostgreSQL 12+ (recommended) or SQLite for development
+- Python 3.14.7
+- PostgreSQL 18+ (recommended) or SQLite for development
+- Docker & Docker Compose (optional, production-like stack)
 - pip & virtualenv
 - Git
 
@@ -171,8 +173,8 @@ cd hospital_blood_report_analyzer
 
 **2. Create Virtual Environment**
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python3.14 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 **3. Install Dependencies**
@@ -209,6 +211,24 @@ python manage.py runserver
 ```
 
 Visit `http://localhost:8000/` in your browser.
+
+### Docker (PostgreSQL 18 + Gunicorn)
+
+```bash
+docker compose up --build
+```
+
+App listens on `http://localhost:8000`. Database is PostgreSQL 18 with migrations applied on startup.
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`: Python 3.14.7, Postgres 18, migrations, **31 tests**, ruff, and pip-audit.
+
+### Migration documentation
+
+- [BEFORE_AFTER_PLAN.md](BEFORE_AFTER_PLAN.md)
+- [STACK_VERSION_AUDIT.md](STACK_VERSION_AUDIT.md)
+- [MIGRATION_REPORT.md](MIGRATION_REPORT.md)
 
 ---
 

@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: hospital_blood_report
+      POSTGRES_USER: hospital
+      POSTGRES_PASSWORD: hospital
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hospital -d hospital_blood_report"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: docker-local-secret-replace-in-production
+      ALLOWED_HOSTS: localhost,127.0.0.1,web
+      CSRF_TRUSTED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
+      REQUIRE_POSTGRES: "True"
+      DATABASE_URL: postgresql://hospital:hospital@db:5432/hospital_blood_report
+      HEALTHZ_RUN_MIGRATIONS: "false"
+      SEED_DEMO_USERS: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --no-input &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --log-file -"
+
+volumes:
+  pgdata:

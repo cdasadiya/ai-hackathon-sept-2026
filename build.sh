@@ -14,7 +14,11 @@ python manage.py migrate --no-input --verbosity 2
 echo "=== Checking migration status ==="
 python manage.py showmigrations
 
-echo "=== Seeding demo users ==="
-python manage.py seed_demo_users
+if [ "${SEED_DEMO_USERS:-true}" = "true" ]; then
+  echo "=== Seeding demo users ==="
+  python manage.py seed_demo_users
+else
+  echo "=== Skipping demo user seed (SEED_DEMO_USERS=false) ==="
+fi
 
 echo "=== Build complete ==="

@@ -42,9 +42,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = "__all__"
+        read_only_fields = ("appointment_id", "created_at")
+        extra_kwargs = {"patient": {"required": False}}
 
 
 class BloodReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = BloodReport
         fields = "__all__"
+        extra_kwargs = {
+            "uploader": {"required": False},
+            "original_filename": {"required": True},
+        }
