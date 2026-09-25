@@ -6,212 +6,174 @@
   <title>Nexus Health | AI-Powered Blood Report Analyzer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/all.min.css">
   <style>
     :root {
-      --primary: #0f3d8a;
-      --primary-light: #2c66c4;
-      --secondary: #00d4ff;
-      --accent: #ff4757;
-      --dark: #0a192f;
-      --light: #f8fafc;
+      --primary: #3d6b5e;
+      --primary-dark: #2f5549;
+      --primary-soft: #e8f2ef;
+      --text: #1c1917;
+      --muted: #78716c;
+      --border: #e7e5e4;
+      --surface: #ffffff;
+      --bg: #fafaf9;
     }
-    
+
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: var(--light);
-      color: #334155;
+      font-family: "Source Sans 3", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
       overflow-x: hidden;
     }
 
-    h1, h2, h3, h4, h5, h6, .navbar-brand {
-      font-family: 'Outfit', sans-serif;
+    h1, h2, h3, .navbar-brand, .display-5 {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 600;
     }
 
-    /* Navbar */
     .navbar-glass {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
-      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
     }
     .navbar-brand {
-      font-weight: 700;
-      color: var(--primary);
-      font-size: 1.5rem;
-      letter-spacing: -0.5px;
+      font-weight: 600;
+      color: var(--text);
+      font-size: 1.45rem;
     }
-    .navbar-brand i { color: var(--secondary); }
-    
-    /* Hero Section */
+    .navbar-brand i { color: var(--primary); }
+
     .hero {
       position: relative;
-      padding: 160px 0 100px;
-      background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -10%;
-      right: -5%;
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(0,212,255,0.15) 0%, rgba(15,61,138,0) 70%);
-      border-radius: 50%;
-      z-index: 0;
-      animation: float 8s ease-in-out infinite;
-    }
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: -10%;
-      left: -5%;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(44,102,196,0.1) 0%, rgba(15,61,138,0) 70%);
-      border-radius: 50%;
-      z-index: 0;
-      animation: float 10s ease-in-out infinite reverse;
+      padding: 150px 0 90px;
+      background: linear-gradient(180deg, #f5f4f1 0%, var(--bg) 55%, #eef3f1 100%);
     }
     .hero-content { position: relative; z-index: 1; }
     .hero-title {
-      font-size: 4rem;
-      font-weight: 700;
-      line-height: 1.1;
-      color: var(--dark);
-      margin-bottom: 1.5rem;
-      background: linear-gradient(to right, var(--primary), var(--secondary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: clamp(2.5rem, 5vw, 3.75rem);
+      line-height: 1.08;
+      color: var(--text);
+      margin-bottom: 1.25rem;
     }
     .hero-subtitle {
-      font-size: 1.25rem;
-      color: #64748b;
-      margin-bottom: 2.5rem;
-      max-width: 600px;
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      max-width: 540px;
+      line-height: 1.65;
     }
-    
-    /* Buttons */
+
     .btn-custom {
-      border-radius: 50px;
-      padding: 0.8rem 2rem;
+      border-radius: 0.65rem;
+      padding: 0.75rem 1.5rem;
       font-weight: 600;
-      font-family: 'Outfit', sans-serif;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-      z-index: 1;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .btn-primary-custom {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-      color: white;
+      background: var(--primary);
+      color: #fff;
       border: none;
-      box-shadow: 0 10px 20px rgba(15, 61, 138, 0.2);
+      box-shadow: 0 4px 14px rgba(61, 107, 94, 0.22);
     }
     .btn-primary-custom:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 15px 25px rgba(15, 61, 138, 0.3);
-      color: white;
+      background: var(--primary-dark);
+      color: #fff;
+      transform: translateY(-1px);
     }
-    
     .btn-outline-custom {
-      background: transparent;
+      background: var(--surface);
       color: var(--primary);
-      border: 2px solid var(--primary);
+      border: 1px solid var(--border);
     }
     .btn-outline-custom:hover {
-      background: var(--primary);
-      color: white;
-      transform: translateY(-3px);
-      box-shadow: 0 10px 20px rgba(15, 61, 138, 0.15);
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      background: var(--primary-soft);
     }
 
-    /* Cards */
-    .glass-card {
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      border-radius: 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.03);
-      padding: 2.5rem;
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 8px 24px rgba(28, 25, 23, 0.04);
+      padding: 2rem;
       height: 100%;
-      position: relative;
-      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .glass-card:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 30px 60px rgba(15, 61, 138, 0.08);
-      background: rgba(255, 255, 255, 0.9);
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(28, 25, 23, 0.07);
     }
-
     .icon-box {
-      width: 64px; height: 64px;
-      border-radius: 16px;
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
-      background: linear-gradient(135deg, rgba(15,61,138,0.1) 0%, rgba(0,212,255,0.1) 100%);
+      font-size: 1.35rem;
+      margin-bottom: 1.25rem;
+      background: var(--primary-soft);
       color: var(--primary);
-      transition: all 0.3s ease;
-    }
-    .glass-card:hover .icon-box {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      color: white;
-      transform: scale(1.1) rotate(5deg);
     }
 
-    /* Booking Wrapper */
+    .hero-visual {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1rem;
+      box-shadow: var(--shadow, 0 12px 40px rgba(28, 25, 23, 0.06));
+    }
+    .floating-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      box-shadow: 0 6px 20px rgba(28, 25, 23, 0.06);
+    }
+
     .booking-wrapper {
-      background: var(--dark);
-      border-radius: 30px;
-      padding: 4rem;
-      color: white;
-      position: relative;
-      overflow: hidden;
-      margin-top: 5rem;
-      box-shadow: 0 30px 60px rgba(10, 25, 47, 0.2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 3rem;
+      margin-top: 3rem;
+      box-shadow: 0 12px 40px rgba(28, 25, 23, 0.05);
     }
-    .booking-wrapper::after {
-      content: '';
-      position: absolute;
-      top: -50%; right: -20%;
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(0,212,255,0.2) 0%, transparent 60%);
-      border-radius: 50%;
+    .booking-panel {
+      background: var(--primary-soft);
+      border: 1px solid rgba(61, 107, 94, 0.12);
+      border-radius: 1rem;
+      padding: 2rem;
     }
-    
-    /* Animations */
-    @keyframes float {
-      0% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-20px) scale(1.05); }
-      100% { transform: translateY(0) scale(1); }
-    }
+
     .fade-up {
-      animation: fadeUp 0.8s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      animation: fadeUp 0.7s ease forwards;
       opacity: 0;
-      transform: translateY(30px);
+      transform: translateY(16px);
     }
     @keyframes fadeUp {
       to { opacity: 1; transform: translateY(0); }
     }
-    .delay-1 { animation-delay: 0.2s; }
-    .delay-2 { animation-delay: 0.4s; }
+    .delay-1 { animation-delay: 0.15s; }
+    .delay-2 { animation-delay: 0.3s; }
 
-    /* Footer */
     .footer {
-      background: #ffffff;
-      padding: 4rem 0 2rem;
-      border-top: 1px solid rgba(0,0,0,0.05);
-      margin-top: 5rem;
+      background: var(--surface);
+      padding: 3rem 0 2rem;
+      border-top: 1px solid var(--border);
+      margin-top: 4rem;
+    }
+    .section-lead { max-width: 560px; margin-left: auto; margin-right: auto; }
+    .booking-icon {
+      width: 64px; height: 64px; border-radius: 14px;
+      background: var(--surface); color: var(--primary);
+      border: 1px solid rgba(61, 107, 94, 0.15);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
     }
   </style>
 </head>
@@ -224,7 +186,7 @@
         <i class="fa-solid fa-heart-pulse"></i>
         <span>NexusHealth</span>
       </a>
-      <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-toggle="target="#navbarNav">
+      <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
@@ -266,10 +228,10 @@
     <div class="container hero-content">
       <div class="row align-items-center">
         <div class="col-lg-6 fade-up">
-          <div class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 mb-4 fw-medium border border-primary-subtle">
-            <i class="fa-solid fa-sparkles me-2"></i>Next-Gen AI Healthcare
+          <div class="badge rounded-pill px-3 py-2 mb-4 fw-medium border" style="background: var(--primary-soft); color: var(--primary); border-color: rgba(61,107,94,0.2) !important;">
+            <i class="fa-solid fa-leaf me-2"></i>Trusted clinical coordination
           </div>
-          <h1 class="hero-title">Intelligent Care,<br>Empowered by AI.</h1>
+          <h1 class="hero-title">Intelligent care,<br>delivered with clarity.</h1>
           <p class="hero-subtitle">Experience the future of medical coordination. Upload blood reports for instant AI analysis, schedule appointments seamlessly, and manage health records securely through our role-based portal.</p>
           <div class="d-flex flex-wrap gap-3 mt-4">
             <a href="{% if request.user.is_authenticated %}{% url 'home' %}{% else %}/register/{% endif %}" class="btn btn-custom btn-primary-custom text-decoration-none">
@@ -281,25 +243,23 @@
           </div>
         </div>
         <div class="col-lg-6 mt-5 mt-lg-0 fade-up delay-1 position-relative">
-          <div class="glass-card border-0 shadow-lg" style="background: rgba(255,255,255,0.4); padding: 1.5rem;">
-            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800" alt="Medical Technology" class="img-fluid rounded-4 shadow-sm w-100" style="object-fit: cover; height: 400px;">
-            
-            <div class="position-absolute glass-card px-4 py-3" style="top: -20px; right: -20px; animation: float 4s ease-in-out infinite;">
-              <div class="d-flex align-items-center gap-3">
-                <div class="bg-success rounded-circle p-2 text-white"><i class="fa-solid fa-check"></i></div>
+          <div class="hero-visual">
+            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800" alt="Medical consultation" class="img-fluid rounded-3 w-100" style="object-fit: cover; height: 380px;">
+            <div class="position-absolute floating-pill" style="top: 1rem; right: 1rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle d-inline-flex align-items-center justify-content-center text-white" style="width:32px;height:32px;background:#5a8f7b;"><i class="fa-solid fa-check fa-sm"></i></span>
                 <div>
-                  <h6 class="mb-0 fw-bold">AI Analysis</h6>
-                  <small class="text-muted">Completed in seconds</small>
+                  <h6 class="mb-0 fw-semibold small">Report insights</h6>
+                  <small class="text-muted">Structured in minutes</small>
                 </div>
               </div>
             </div>
-            
-            <div class="position-absolute glass-card px-4 py-3" style="bottom: 30px; left: -30px; animation: float 5s ease-in-out infinite reverse;">
-              <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary rounded-circle p-2 text-white"><i class="fa-regular fa-calendar-check"></i></div>
+            <div class="position-absolute floating-pill" style="bottom: 1rem; left: 1rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle d-inline-flex align-items-center justify-content-center text-white" style="width:32px;height:32px;background:var(--primary);"><i class="fa-regular fa-calendar-check fa-sm"></i></span>
                 <div>
-                  <h6 class="mb-0 fw-bold">Appointments</h6>
-                  <small class="text-muted">Confirmed instantly</small>
+                  <h6 class="mb-0 fw-semibold small">Appointments</h6>
+                  <small class="text-muted">Clear scheduling</small>
                 </div>
               </div>
             </div>
@@ -312,12 +272,12 @@
   <!-- Features Section -->
   <section id="features" class="py-5 mt-5">
     <div class="container">
-      <h2 class="text-center fw-bold text-dark mb-3 fade-up" style="font-size: 2.5rem; font-family: 'Outfit';">A Platform Designed for Excellence</h2>
-      <p class="text-center text-muted mx-auto fade-up mb-5" style="max-width: 600px; font-size: 1.1rem;">Strict role-based access ensures that Patients, Doctors, and Admins experience a tailored, secure, and highly efficient workflow.</p>
+      <h2 class="text-center mb-3 fade-up" style="font-size: 2.35rem;">A platform built for care teams</h2>
+      <p class="text-center text-muted section-lead fade-up mb-5">Role-based portals give patients, doctors, and administrators a calm, secure workspace—without clutter or compromise.</p>
       
       <div class="row g-4">
         <div class="col-lg-4 col-md-6 fade-up">
-          <div class="glass-card">
+          <div class="feature-card">
             <div class="icon-box"><i class="fa-solid fa-microscope"></i></div>
             <h4 class="fw-bold mb-3">AI Blood Report Analysis</h4>
             <p class="text-muted mb-0">Upload your PDF or image reports securely. Our AI engine instantly structures the data, highlighting anomalies and generating actionable health insights.</p>
@@ -325,7 +285,7 @@
         </div>
         
         <div class="col-lg-4 col-md-6 fade-up delay-1">
-          <div class="glass-card">
+          <div class="feature-card">
             <div class="icon-box"><i class="fa-solid fa-shield-halved"></i></div>
             <h4 class="fw-bold mb-3">Strict Role-Based Access</h4>
             <p class="text-muted mb-0">Engineered with enterprise-grade security. Admins oversee the platform, Doctors manage assigned patients, and Patients control their private records securely.</p>
@@ -333,7 +293,7 @@
         </div>
         
         <div class="col-lg-4 col-md-6 fade-up delay-2">
-          <div class="glass-card">
+          <div class="feature-card">
             <div class="icon-box"><i class="fa-regular fa-calendar-days"></i></div>
             <h4 class="fw-bold mb-3">Smart Appointments</h4>
             <p class="text-muted mb-0">Real-time calendar synchronization prevents double-booking. Schedule, reschedule, or cancel appointments dynamically based on verified doctor availability.</p>
@@ -346,38 +306,24 @@
   <!-- Booking Section CTA -->
   <section id="booking" class="container py-5 mb-5">
     <div class="booking-wrapper fade-up">
-      <div class="row align-items-center position-relative z-1">
-        <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5">
-          <h2 class="display-5 fw-bold mb-4" style="font-family: 'Outfit';">Book Your Visit Today</h2>
-          <p class="lead text-white-50 mb-4">Take control of your health journey. Schedule an appointment with our verified specialists directly from the platform.</p>
-          <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
-            <li class="d-flex align-items-center gap-3 text-white-50">
-              <i class="fa-solid fa-circle-check text-info fs-5"></i>
-              <span>No overlapping time slots</span>
-            </li>
-            <li class="d-flex align-items-center gap-3 text-white-50">
-              <i class="fa-solid fa-circle-check text-info fs-5"></i>
-              <span>Instant AI report analysis</span>
-            </li>
-            <li class="d-flex align-items-center gap-3 text-white-50">
-              <i class="fa-solid fa-circle-check text-info fs-5"></i>
-              <span>Secure medical data storage</span>
-            </li>
+      <div class="row align-items-center">
+        <div class="col-lg-6 mb-4 mb-lg-0 pe-lg-4">
+          <h2 class="display-5 mb-3">Book your visit with confidence</h2>
+          <p class="text-muted mb-4">Schedule with verified specialists, upload labs securely, and follow results in one place.</p>
+          <ul class="list-unstyled mb-0 d-flex flex-column gap-2 text-muted">
+            <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> No overlapping time slots</li>
+            <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> AI-assisted report summaries</li>
+            <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> Private, role-based records</li>
           </ul>
         </div>
-        
         <div class="col-lg-6">
-          <div class="bg-white bg-opacity-10 p-5 rounded-4 border border-light border-opacity-25" style="backdrop-filter: blur(10px);">
-            <div class="text-center">
-              <div class="bg-primary bg-opacity-50 rounded-circle d-inline-flex align-items-center justify-content-center mb-4 shadow" style="width: 80px; height: 80px;">
-                <i class="fa-solid fa-user-lock fs-2 text-white"></i>
-              </div>
-              <h4 class="text-white mb-3 fw-bold">Sign in to Schedule</h4>
-              <p class="text-white-50 mb-4">You need a verified patient account to book appointments and upload blood reports.</p>
-              <div class="d-flex justify-content-center gap-3 flex-wrap">
-                <a href="/login/" class="btn btn-custom btn-outline-light px-4">Sign In</a>
-                <a href="/register/" class="btn btn-custom btn-primary-custom px-4 text-dark bg-white border-0" style="background: white !important;">Create Account</a>
-              </div>
+          <div class="booking-panel text-center">
+            <div class="booking-icon mb-3"><i class="fa-solid fa-user-shield"></i></div>
+            <h4 class="mb-2 fw-semibold">Sign in to schedule</h4>
+            <p class="text-muted mb-4 small">Create a patient account to book appointments and upload blood reports.</p>
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+              <a href="/login/" class="btn btn-custom btn-outline-custom px-4">Sign in</a>
+              <a href="/register/" class="btn btn-custom btn-primary-custom px-4">Create account</a>
             </div>
           </div>
         </div>
@@ -389,8 +335,8 @@
   <footer class="footer">
     <div class="container text-center">
       <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
-        <i class="fa-solid fa-heart-pulse text-primary fs-4"></i>
-        <span class="fs-4 fw-bold text-dark" style="font-family: 'Outfit';">NexusHealth</span>
+        <i class="fa-solid fa-heart-pulse fs-4" style="color: var(--primary);"></i>
+        <span class="fs-4 fw-semibold">NexusHealth</span>
       </div>
       <p class="text-muted mb-0">© 2026 NexusHealth Platform. Ensuring secure, AI-powered medical coordination.</p>
     </div>
