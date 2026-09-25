@@ -1,0 +1,116 @@
+/* NexusHealth auth styles (inlined for Render when static CDN/WhiteNoise misses a file) */
+:root {
+  --nx-brand: #3d6b5e;
+  --nx-brand-dark: #2f5549;
+  --nx-brand-soft: #e8f2ef;
+  --nx-accent: #8b7355;
+  --nx-bg: #fafaf9;
+  --nx-bg-warm: #f5f4f1;
+  --nx-surface: #ffffff;
+  --nx-text: #1c1917;
+  --nx-muted: #78716c;
+  --nx-border: #e7e5e4;
+  --nx-shadow: 0 1px 3px rgba(28, 25, 23, 0.06), 0 8px 24px rgba(28, 25, 23, 0.04);
+  --nx-radius: 0.75rem;
+  --nx-font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --nx-font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+.nx-auth-page {
+  font-family: var(--nx-font-body);
+  background: linear-gradient(160deg, var(--nx-bg-warm) 0%, var(--nx-bg) 45%, #eef3f1 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.nx-auth-shell {
+  width: 100%;
+  max-width: 920px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  background: var(--nx-surface);
+  border-radius: 1.25rem;
+  box-shadow: var(--nx-shadow);
+  border: 1px solid var(--nx-border);
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .nx-auth-shell { grid-template-columns: 1fr 1.05fr; min-height: 560px; }
+}
+.nx-auth-aside {
+  display: none;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #f0f5f3 0%, #e8efec 100%);
+  border-right: 1px solid var(--nx-border);
+  flex-direction: column;
+  justify-content: center;
+}
+@media (min-width: 768px) { .nx-auth-aside { display: flex; } }
+.nx-auth-aside h1 {
+  font-family: var(--nx-font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--nx-text);
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+.nx-auth-aside p { color: var(--nx-muted); font-size: 0.95rem; line-height: 1.6; margin: 0; }
+.nx-auth-card { padding: 2.25rem 2rem; }
+@media (min-width: 768px) { .nx-auth-card { padding: 2.5rem 2.75rem; } }
+.nx-brand { text-align: center; margin-bottom: 1.75rem; }
+.nx-brand-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--nx-brand-soft); color: var(--nx-brand);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.45rem; margin-bottom: 0.65rem;
+  border: 1px solid rgba(61, 107, 94, 0.15);
+}
+.nx-brand-name {
+  font-family: var(--nx-font-display);
+  font-size: 1.65rem; font-weight: 600; color: var(--nx-text);
+  letter-spacing: -0.02em;
+}
+.nx-brand-sub { font-size: 0.8rem; color: var(--nx-muted); font-weight: 500; }
+.nx-auth-card h2 { color: var(--nx-text); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+.nx-auth-card .nx-sub { color: var(--nx-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+.nx-auth-card label { font-size: 0.78rem; font-weight: 600; color: var(--nx-muted); margin-bottom: 0.35rem; display: block; }
+.nx-auth-card .form-control {
+  background: var(--nx-surface); border: 1px solid var(--nx-border); color: var(--nx-text);
+  border-radius: var(--nx-radius); padding: 0.65rem 0.85rem; font-size: 0.9rem;
+}
+.nx-auth-card .form-control:focus {
+  border-color: var(--nx-brand);
+  box-shadow: 0 0 0 3px rgba(61, 107, 94, 0.12);
+}
+.nx-auth-card .form-control::placeholder { color: #a8a29e; }
+.nx-btn-brand {
+  background: var(--nx-brand); border: none; color: #fff;
+  border-radius: var(--nx-radius); padding: 0.7rem 1rem;
+  font-weight: 600; font-size: 0.9rem; transition: background 0.15s ease;
+}
+.nx-btn-brand:hover { background: var(--nx-brand-dark); color: #fff; }
+.nx-auth-link { color: var(--nx-brand); font-weight: 600; text-decoration: none; }
+.nx-auth-link:hover { color: var(--nx-brand-dark); }
+.nx-divider { text-align: center; position: relative; margin: 1.35rem 0; }
+.nx-divider::before {
+  content: ""; position: absolute; top: 50%; left: 0; right: 0;
+  height: 1px; background: var(--nx-border);
+}
+.nx-divider span {
+  background: var(--nx-surface); padding: 0 0.75rem;
+  color: var(--nx-muted); font-size: 0.78rem; position: relative;
+}
+.nx-role-card {
+  border: 1.5px solid var(--nx-border); border-radius: var(--nx-radius);
+  padding: 0.75rem 1rem; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex; align-items: center; gap: 0.75rem; flex: 1;
+  background: var(--nx-surface);
+}
+.nx-role-card:hover, .nx-role-card.selected {
+  border-color: var(--nx-brand); background: var(--nx-brand-soft);
+}
+.nx-role-card .rt { font-size: 0.82rem; font-weight: 700; color: var(--nx-text); }
+.nx-role-card .rs { font-size: 0.72rem; color: var(--nx-muted); }
