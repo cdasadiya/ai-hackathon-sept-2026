@@ -43,7 +43,15 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+admin_static=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 "${BASE}/static/admin/css/base.css")
 css_code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 "${BASE}/static/css/nexus-theme.css")
+if [[ "$admin_static" == "200" ]]; then
+  echo "PASS static admin base.css"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL static admin base.css HTTP $admin_static (run ./scripts/render_start.sh on Render)"
+  FAIL=$((FAIL + 1))
+fi
 if [[ "$css_code" == "200" ]]; then
   echo "PASS static nexus-theme.css"
   PASS=$((PASS + 1))

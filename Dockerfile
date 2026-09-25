@@ -16,8 +16,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-RUN chmod +x build.sh
+RUN chmod +x build.sh scripts/render_start.sh \
+    && DATABASE_URL=sqlite:////tmp/collectstatic.sqlite3 SECRET_KEY=docker-build-only \
+       python manage.py collectstatic --no-input
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--log-file", "-"]
+CMD ["bash", "scripts/render_start.sh"]

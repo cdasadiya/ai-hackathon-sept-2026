@@ -1,7 +1,7 @@
 import requests
 import time
 
-url = "https://hospital-blood-report-analyzer.onrender.com/logout/"
+url = "https://ai-hackathon-sept-2026.onrender.com/logout/"
 
 for _ in range(20):
     try:

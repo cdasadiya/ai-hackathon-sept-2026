@@ -2,7 +2,7 @@ import requests
 import time
 import re
 
-url = "https://hospital-blood-report-analyzer.onrender.com/register/"
+url = "https://ai-hackathon-sept-2026.onrender.com/register/"
 session = requests.Session()
 
 def test():

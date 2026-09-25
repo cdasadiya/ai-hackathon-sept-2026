@@ -9,7 +9,7 @@
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.14.7-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.14.7"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL 18"></a>
   <a href="https://github.com/cdasadiya/ai-hackathon-sept-2026/actions"><img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Tests-31_passing-2EA043?style=flat-square" alt="31 tests">
+  <img src="https://img.shields.io/badge/Tests-36_passing-2EA043?style=flat-square" alt="36 tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT">
 </p>
 
@@ -18,8 +18,29 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#stack--migration-matrix">Stack matrix</a> ·
   <a href="#api-overview">API</a> ·
-  <a href="#deployment">Deploy</a>
+  <a href="#live-demo">Live demo</a> ·
+  <a href="#deployment">Deploy</a> ·
+  <a href="#user-guide">User guide</a>
 </p>
+
+---
+
+## Live demo
+
+**Production (Render):** [https://ai-hackathon-sept-2026.onrender.com/](https://ai-hackathon-sept-2026.onrender.com/)
+
+| Check | URL |
+| --- | --- |
+| Health | `/healthz/` |
+| Register | `/register/` |
+| Sign in | `/login/` |
+
+After deploy, verify static assets and routes:
+
+```bash
+./scripts/render_smoke.sh
+./scripts/production_url_audit.sh
+```
 
 ---
 
@@ -44,7 +65,7 @@ Production-oriented Django application for hospitals and hackathon demos: **pati
 - **n8n** webhook on upload; callback updates `HealthReport` and `ai_analysis`  
 - **DRF** viewsets, **simplejwt**, session auth for browser UI  
 - **WhiteNoise** + **Gunicorn 26** for production  
-- **31 automated tests**, **pip-audit** clean, **Docker** + **GitHub Actions**
+- **36 automated tests**, **pip-audit** clean, **Docker** + **GitHub Actions**
 
 ---
 
@@ -150,6 +171,14 @@ pip-audit -r requirements.txt
 
 CI runs the same checks on push/PR to `main` (see `.github/workflows/ci.yml`).
 
+### Testing
+
+```bash
+python manage.py test app
+python manage.py check --deploy   # with production-like env vars
+./scripts/production_url_audit.sh # read-only checks against live Render
+```
+
 ---
 
 ## Configuration
@@ -218,9 +247,27 @@ ai-hackathon-sept-2026/
 ### Render (recommended)
 
 1. Connect [github.com/cdasadiya/ai-hackathon-sept-2026](https://github.com/cdasadiya/ai-hackathon-sept-2026).  
-2. Use **`render.yaml`**: Python **3.14.7**, Postgres, Gunicorn start command.  
-3. Set `DEBUG=False`; `SECRET_KEY` and `DATABASE_URL` are wired in the blueprint.  
-4. Push to the branch Render tracks (e.g. `main` after merge).
+2. **Python 3.14.7**, linked **PostgreSQL**, branch **`main`**.  
+3. **Build command:** `./build.sh` (installs deps, `collectstatic`, migrate when `DATABASE_URL` is set, optional demo seed).  
+4. **Start command:** `./scripts/render_start.sh` (re-runs `collectstatic`, migrate, Gunicorn on `$PORT`).  
+5. Environment: `DEBUG=False`, generated `SECRET_KEY`, `REQUIRE_POSTGRES=True`, `DATABASE_URL` from Postgres.  
+6. **CSRF:** use `https://ai-hackathon-sept-2026.onrender.com` or leave unset so `RENDER_EXTERNAL_URL` is applied — do **not** use wildcard `https://*.onrender.com`.  
+7. Push to `main` or **Manual Deploy → latest commit**.
+
+<details>
+<summary><strong>Render troubleshooting</strong></summary>
+
+| Symptom | Fix |
+| --- | --- |
+| `/static/...` 404 | Set start command to `./scripts/render_start.sh`; confirm build runs `./build.sh`. |
+| CSRF failed on login/register | Fix `CSRF_TRUSTED_ORIGINS` (exact HTTPS URL). |
+| `/healthz/` DB error | Link Postgres; set `DATABASE_URL`. |
+| Cold start slow | Free tier spins down; first request may take 30–60s. |
+| Uploads vanish after redeploy | Use Google Drive in Admin → Integration Configuration. |
+
+</details>
+
+Blueprint: [`render.yaml`](render.yaml) (service name `ai-hackathon-sept-2026`).
 
 ### Manual / VPS
 
@@ -230,6 +277,51 @@ python manage.py migrate --no-input
 python manage.py collectstatic --no-input
 gunicorn config.wsgi:application --workers 2 --timeout 120 --bind 0.0.0.0:8000
 ```
+
+---
+
+## User guide
+
+<details>
+<summary><strong>Patient</strong></summary>
+
+1. Open [Register](https://ai-hackathon-sept-2026.onrender.com/register/) → choose **Patient** → create account.  
+2. Sign in → **Patient dashboard** → book appointment (optional report upload).  
+3. View appointments, cancel pending visits, upload reports, edit profile.
+
+</details>
+
+<details>
+<summary><strong>Doctor</strong></summary>
+
+1. Register as **Doctor** (pending admin approval).  
+2. After approval, manage appointments, status, remarks, and report review from the doctor dashboard.
+
+</details>
+
+<details>
+<summary><strong>Admin</strong></summary>
+
+1. Use a staff admin account (not self-registered).  
+2. Open `/dashboard/admin/` → approve/reject doctors, view stats, open Django Admin for integrations and tokens.
+
+</details>
+
+<details>
+<summary><strong>Demo accounts</strong> (when `SEED_DEMO_USERS=true` on build)</summary>
+
+Run `python manage.py seed_demo_users` locally for usernames; default password is printed by that command (`Pass1234!` in code). **Change or disable seed in production** you treat as real.
+
+</details>
+
+Screenshots (current UI, live Render):
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="NexusHealth home page" width="720">
+</p>
+<p align="center">
+  <img src="docs/screenshots/register.png" alt="NexusHealth registration page" width="720">
+</p>
 
 ---
 

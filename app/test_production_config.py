@@ -15,6 +15,14 @@ class ProductionConfigTests(SimpleTestCase):
         path = settings.BASE_DIR / "static" / "css" / "nexus-theme.css"
         self.assertTrue(path.is_file(), "static/css/nexus-theme.css must exist for collectstatic")
 
+    def test_collectstatic_includes_admin_and_theme(self):
+        from django.core.management import call_command
+
+        call_command("collectstatic", interactive=False, verbosity=0)
+        root = settings.STATIC_ROOT
+        self.assertTrue((root / "admin" / "css" / "base.css").is_file())
+        self.assertTrue((root / "css" / "nexus-theme.css").is_file())
+
 
 class AuthTemplateTests(SimpleTestCase):
     def test_register_page_inlines_auth_styles(self):

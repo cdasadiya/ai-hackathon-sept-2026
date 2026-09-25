@@ -8,11 +8,17 @@ curl -fsS "$BASE/healthz/" | grep -q '"status": "ok"' && echo "OK healthz"
 curl -fsS -o /dev/null -w "home HTTP %{http_code}\n" "$BASE/"
 curl -fsS -o /dev/null -w "login HTTP %{http_code}\n" "$BASE/login/"
 curl -fsS -o /dev/null -w "register HTTP %{http_code}\n" "$BASE/register/"
-code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/static/css/nexus-theme.css")
-echo "nexus-theme.css HTTP $code"
-if [[ "$code" != "200" ]]; then
-  echo "FAIL: static CSS missing — run collectstatic on deploy (build.sh) and redeploy latest main."
+admin_code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/static/admin/css/base.css")
+theme_code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/static/css/nexus-theme.css")
+echo "admin static HTTP $admin_code"
+echo "nexus-theme.css HTTP $theme_code"
+if [[ "$admin_code" != "200" ]]; then
+  echo "FAIL: Django static not served — ensure Render buildCommand=./build.sh and startCommand=./scripts/render_start.sh"
   exit 1
 fi
-curl -fsS "$BASE/" | grep -q "delivered with clarity" && echo "OK new home markup" || echo "WARN: home may still be an older build"
+if [[ "$theme_code" != "200" ]]; then
+  echo "WARN: nexus-theme.css HTTP $theme_code (auth pages use inline CSS fallback)"
+fi
+curl -fsS "$BASE/" | grep -q "delivered with clarity" && echo "OK home markup" || echo "WARN: home may be an older build"
+curl -fsS "$BASE/register/" | grep -q -- "--nx-brand" && echo "OK register auth styles" || echo "FAIL: register missing auth styles"
 echo "=== Done ==="

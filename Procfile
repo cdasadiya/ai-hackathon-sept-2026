@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --no-input && python manage.py migrate --no-input && gunicorn config.wsgi:application --log-file - --workers 2 --timeout 120
+web: bash scripts/render_start.sh

@@ -12,8 +12,12 @@ if [ ! -f staticfiles/css/nexus-theme.css ]; then
   exit 1
 fi
 
-echo "=== Running database migrations ==="
-python manage.py migrate --no-input --verbosity 2
+echo "=== Running database migrations (build) ==="
+if [ -n "${DATABASE_URL:-}" ]; then
+  python manage.py migrate --no-input --verbosity 2
+else
+  echo "Skipping migrate at build: DATABASE_URL not set"
+fi
 
 echo "=== Checking migration status ==="
 python manage.py showmigrations
