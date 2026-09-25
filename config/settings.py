@@ -25,8 +25,28 @@ def get_list_env(name: str, default: str = "") -> list[str]:
 DEBUG = get_bool_env("DEBUG", False)
 
 SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY") or "dev-insecure-secret-key-only-for-local-debug"
-ALLOWED_HOSTS = get_list_env("ALLOWED_HOSTS", ".onrender.com,localhost,127.0.0.1")
-CSRF_TRUSTED_ORIGINS = get_list_env("CSRF_TRUSTED_ORIGINS", "https://*.onrender.com")
+
+def _default_allowed_hosts() -> str:
+    hosts = [".onrender.com", "localhost", "127.0.0.1"]
+    render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if render_host and render_host not in hosts:
+        hosts.append(render_host)
+    return ",".join(hosts)
+
+
+def _default_csrf_origins() -> str:
+    # Django requires exact origins (no wildcards). Render sets RENDER_EXTERNAL_URL at runtime.
+    origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+    if render_url:
+        origins.append(render_url)
+    else:
+        origins.append("https://ai-hackathon-sept-2026.onrender.com")
+    return ",".join(origins)
+
+
+ALLOWED_HOSTS = get_list_env("ALLOWED_HOSTS", _default_allowed_hosts())
+CSRF_TRUSTED_ORIGINS = get_list_env("CSRF_TRUSTED_ORIGINS", _default_csrf_origins())
 
 HEALTHZ_RUN_MIGRATIONS = get_bool_env("HEALTHZ_RUN_MIGRATIONS", False)
 
@@ -72,6 +92,7 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

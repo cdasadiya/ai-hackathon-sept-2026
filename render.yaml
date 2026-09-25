@@ -18,8 +18,9 @@ services:
         value: "True"
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
+      # Optional override; config.settings uses RENDER_EXTERNAL_URL when unset.
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://*.onrender.com"
+        value: "https://ai-hackathon-sept-2026.onrender.com"
       - key: WEB_CONCURRENCY
         value: 4
       - key: HEALTHZ_RUN_MIGRATIONS
