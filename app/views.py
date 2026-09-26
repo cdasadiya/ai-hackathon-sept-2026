@@ -1,4 +1,4 @@
-import logging, threading, json as _json
+import logging, os, threading, json as _json
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login
@@ -67,7 +67,11 @@ def healthz(request):
         IntegrationConfig.get_config()
     except Exception:
         pass
-    return JsonResponse({"status": "ok", "message": "Database reachable."})
+    return JsonResponse({
+        "status": "ok",
+        "message": "Database reachable.",
+        "revision": os.getenv("RENDER_GIT_COMMIT", "")[:12],
+    })
 
 @login_required
 def debug_admin(request):
