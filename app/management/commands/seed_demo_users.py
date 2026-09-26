@@ -42,7 +42,9 @@ class Command(BaseCommand):
                 user.save()
 
                 if role == User.Role.DOCTOR:
-                    DoctorProfile.objects.get_or_create(user=user)
+                    doc_profile, _ = DoctorProfile.objects.get_or_create(user=user)
+                    doc_profile.verification_status = DoctorProfile.VerificationStatus.APPROVED
+                    doc_profile.save(update_fields=["verification_status"])
                 elif role == User.Role.PATIENT:
                     PatientProfile.objects.get_or_create(user=user)
 

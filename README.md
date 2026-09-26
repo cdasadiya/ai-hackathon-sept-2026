@@ -249,7 +249,7 @@ ai-hackathon-sept-2026/
 1. Connect [github.com/cdasadiya/ai-hackathon-sept-2026](https://github.com/cdasadiya/ai-hackathon-sept-2026).  
 2. **Python 3.14.7**, linked **PostgreSQL**, branch **`main`**.  
 3. **Build command:** `./build.sh` (installs deps, `collectstatic`, migrate when `DATABASE_URL` is set, optional demo seed).  
-4. **Start command:** `./scripts/render_start.sh` (re-runs `collectstatic`, migrate, Gunicorn on `$PORT`).  
+4. **Start command:** `./scripts/render_start.sh` (re-runs `collectstatic`, migrate, **demo user seed** when `SEED_DEMO_USERS=true`, Gunicorn on `$PORT`).  
 5. Environment: `DEBUG=False`, generated `SECRET_KEY`, `REQUIRE_POSTGRES=True`, `DATABASE_URL` from Postgres.  
 6. **CSRF:** use `https://ai-hackathon-sept-2026.onrender.com` or leave unset so `RENDER_EXTERNAL_URL` is applied — do **not** use wildcard `https://*.onrender.com`.  
 7. Push to `main` or **Manual Deploy → latest commit**.

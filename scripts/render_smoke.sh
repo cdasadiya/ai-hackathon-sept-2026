@@ -21,4 +21,18 @@ if [[ "$theme_code" != "200" ]]; then
 fi
 curl -fsS "$BASE/" | grep -q "delivered with clarity" && echo "OK home markup" || echo "WARN: home may be an older build"
 curl -fsS "$BASE/register/" | grep -q -- "--nx-brand" && echo "OK register auth styles" || echo "FAIL: register missing auth styles"
+
+echo "=== Demo JWT login (requires SEED_DEMO_USERS + deploy with seed on start) ==="
+for user in admin1 patient1 doctor1; do
+  body=$(curl -fsS -X POST "$BASE/api/token/" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$user\",\"password\":\"Pass1234!\"}" 2>/dev/null || true)
+  if echo "$body" | grep -q '"access"'; then
+    echo "OK token for $user"
+  else
+    echo "FAIL token for $user: ${body:-request failed}"
+    exit 1
+  fi
+done
+
 echo "=== Done ==="
