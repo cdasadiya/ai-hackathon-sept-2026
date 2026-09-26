@@ -19,6 +19,13 @@ python manage.py migrate --no-input
 echo "=== demo users (production Postgres) ==="
 ./scripts/seed_demo_if_enabled.sh
 
+echo "=== showcase dataset ==="
+if [ -n "${DATABASE_URL:-}" ]; then
+  python manage.py seed_showcase
+else
+  echo "Skipping showcase seed: DATABASE_URL not set"
+fi
+
 echo "=== gunicorn ==="
 PORT="${PORT:-8000}"
 exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT}" --log-file - --workers 2 --timeout 120

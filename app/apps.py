@@ -20,16 +20,18 @@ class AppConfig(DjangoAppConfig):
         if not os.environ.get("DATABASE_URL"):
             return
         argv = " ".join(sys.argv)
-        if any(flag in argv for flag in ("migrate", "makemigrations", "collectstatic", "test", "seed_demo_users", "shell")):
+        if any(flag in argv for flag in ("migrate", "makemigrations", "collectstatic", "test", "seed_demo_users", "seed_showcase", "shell")):
+            return
+        if not any(flag in argv for flag in ("gunicorn", "runserver")):
             return
         try:
             from django.contrib.auth import get_user_model
-
-            existing = get_user_model().objects.filter(username="admin1").first()
-            if existing is not None and existing.check_password("Pass1234!"):
-                return
             from django.core.management import call_command
 
-            call_command("seed_demo_users")
+            if os.environ.get("SEED_DEMO_USERS", "true") == "true":
+                existing = get_user_model().objects.filter(username="admin1").first()
+                if existing is None or not existing.check_password("Pass1234!"):
+                    call_command("seed_demo_users")
+            call_command("seed_showcase")
         except Exception:
-            logger.exception("Demo user seed on startup failed")
+            logger.exception("Startup dataset seed failed")

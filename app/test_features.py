@@ -722,3 +722,11 @@ class AdminAndCommandTests(FeatureDataMixin, TestCase):
         call_command("populate_demo_db")
         self.assertGreaterEqual(Appointment.objects.count(), 5)
         self.assertGreaterEqual(BloodReport.objects.count(), 5)
+        call_command("seed_showcase")
+        self.assertEqual(User.objects.filter(username__startswith="case_patient_").count(), 10)
+        self.assertEqual(User.objects.filter(username__startswith="case_doctor_").count(), 10)
+        self.assertEqual(Appointment.objects.filter(appointment_id__startswith="APT-2026-900").count(), 10)
+        statuses = set(
+            Appointment.objects.filter(appointment_id__startswith="APT-2026-900").values_list("status", flat=True)
+        )
+        self.assertEqual(statuses, {"PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"})
