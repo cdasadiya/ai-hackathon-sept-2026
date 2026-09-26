@@ -326,18 +326,16 @@ def set_accepting(username, accepting, first, last, bio, license_no):
 
 
 def map_all_doctor_ids(patient_username="case_patient_01"):
-    """Discover DoctorProfile pks for every showcase doctor with minimal probes."""
-    doctor_rows_by_name = {row[0]: row for row in DOCTORS}
-    # Enable accepting so probes are not blocked by Appointment.clean()
-    for row in DOCTORS:
-        username, first, last, _s, _d, license_no, _v, _a, _act, _ver, bio = row
-        set_accepting(username, True, first, last, bio, license_no)
+    """Discover DoctorProfile pks for every showcase doctor.
 
-    access_patient = token_for(patient_username)
+    On this deploy, roster doctor1–5 occupy profile ids 1–5 and case_doctor_01–10
+    were registered next (ids 6–15). Prefer that ordering, then confirm via an
+    existing appointment list when present.
+    """
+    doctor_rows_by_name = {row[0]: row for row in DOCTORS}
     mapped = {}
     unmapped = {row[0] for row in DOCTORS}
 
-    # Reuse any appointments already on the doctor (e.g. prior map probes)
     for username in list(unmapped):
         access_doc = token_for(username)
         st, _u, body = Site().request(
@@ -351,59 +349,54 @@ def map_all_doctor_ids(patient_username="case_patient_01"):
                 unmapped.discard(username)
                 print(f"  mapped {username} -> doctor_profile_id={mapped[username]} (existing)")
 
-    start = datetime.now(UTC) + timedelta(days=75)
-    for doc_id in range(1, 80):
-        if not unmapped:
-            break
-        if doc_id in mapped.values():
+    # Sequential fallback: case_doctor_NN -> 5 + NN (after doctor1–5).
+    for row in DOCTORS:
+        username = row[0]
+        if username in mapped:
             continue
-        start_i = start + timedelta(minutes=doc_id * 40)
-        end_i = start_i + timedelta(minutes=20)
-        marker = f"SHOWCASE_MAP:id={doc_id}"
-        payload = {
-            "doctor": doc_id,
+        n = int(username.rsplit("_", 1)[-1])
+        mapped[username] = 5 + n
+        unmapped.discard(username)
+        print(f"  mapped {username} -> doctor_profile_id={mapped[username]} (sequential)")
+
+    # Spot-check one unmapped-via-existing doctor by creating a probe
+    probe_user = "case_doctor_03" if "case_doctor_03" in mapped else next(iter(mapped))
+    username, first, last, _s, _d, license_no, _v, accepting, _act, _ver, bio = doctor_rows_by_name[probe_user]
+    set_accepting(probe_user, True, first, last, bio, license_no)
+    access_patient = token_for(patient_username)
+    access_doc = token_for(probe_user)
+    start_i = datetime.now(UTC) + timedelta(days=90)
+    end_i = start_i + timedelta(minutes=20)
+    marker = f"SHOWCASE_MAP:verify:{probe_user}"
+    st, _u, body = Site().request(
+        "/api/appointments/",
+        json_body={
+            "doctor": mapped[probe_user],
             "start_time": start_i.isoformat().replace("+00:00", "Z"),
             "end_time": end_i.isoformat().replace("+00:00", "Z"),
             "notes": marker,
             "status": "PENDING",
-        }
-        st, _u, body = Site().request(
-            "/api/appointments/",
-            json_body=payload,
-            headers={"Authorization": f"Bearer {access_patient}"},
+        },
+        headers={"Authorization": f"Bearer {access_patient}"},
+    )
+    if st not in (200, 201):
+        raise RuntimeError(
+            f"Sequential map verify failed for {probe_user} id={mapped[probe_user]}: HTTP {st} {body[:200]}"
         )
-        if st not in (200, 201):
-            continue
-        appt = json.loads(body)
-        hit = None
-        for username in list(unmapped):
-            access_doc = token_for(username)
-            st2, _u2, body2 = Site().request(
-                "/api/appointments/",
-                headers={"Authorization": f"Bearer {access_doc}"},
-            )
-            if st2 == 200 and marker in body2:
-                hit = username
-                mapped[username] = doc_id
-                unmapped.discard(username)
-                print(f"  mapped {username} -> doctor_profile_id={doc_id}")
-                Site().request(
-                    f"/api/appointments/{appt['id']}/update_status/",
-                    json_body={"status": "CANCELLED", "notes": marker + " (cancelled map probe)"},
-                    headers={"Authorization": f"Bearer {access_doc}"},
-                )
-                break
-        if hit is None:
-            # Not a showcase doctor (e.g. doctor1..5). Leave the row; do not delete (patient cannot).
-            print(f"  probe doctor_profile_id={doc_id} is not a showcase doctor")
-
-    # Restore intended accepting flags
-    for row in DOCTORS:
-        username, first, last, _s, _d, license_no, _v, accepting, _act, _ver, bio = row
-        set_accepting(username, accepting, first, last, bio, license_no)
-
-    if unmapped:
-        raise RuntimeError(f"Unmapped showcase doctors: {sorted(unmapped)}")
+    appt = json.loads(body)
+    st2, _u2, body2 = Site().request(
+        "/api/appointments/",
+        headers={"Authorization": f"Bearer {access_doc}"},
+    )
+    if marker not in body2:
+        raise RuntimeError(f"Verify probe not visible to {probe_user}; mapping wrong")
+    Site().request(
+        f"/api/appointments/{appt['id']}/update_status/",
+        json_body={"status": "CANCELLED", "notes": marker + " (cancelled verify)"},
+        headers={"Authorization": f"Bearer {access_doc}"},
+    )
+    set_accepting(probe_user, accepting, first, last, bio, license_no)
+    print(f"  verified sequential map via {probe_user}")
     return mapped, doctor_rows_by_name
 
 
