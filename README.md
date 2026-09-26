@@ -252,7 +252,7 @@ ai-hackathon-sept-2026/
 4. **Start command:** `./scripts/render_start.sh` (re-runs `collectstatic`, migrate, **demo user seed** when `SEED_DEMO_USERS=true`, Gunicorn on `$PORT`).  
 5. Environment: `DEBUG=False`, generated `SECRET_KEY`, `REQUIRE_POSTGRES=True`, `DATABASE_URL` from Postgres.  
 6. **CSRF:** use `https://ai-hackathon-sept-2026.onrender.com` or leave unset so `RENDER_EXTERNAL_URL` is applied — do **not** use wildcard `https://*.onrender.com`.  
-7. Push to `main` or **Manual Deploy → latest commit**.
+7. **Auto-deploy:** Blueprint sets `branch: main` and `autoDeployTrigger: commit`, so each push to `main` rebuilds and redeploys. After changing `render.yaml`, sync the Blueprint in the Render Dashboard (or push so Render picks up the Blueprint diff). Manual Deploy still works as a fallback.
 
 <details>
 <summary><strong>Render troubleshooting</strong></summary>
@@ -262,12 +262,13 @@ ai-hackathon-sept-2026/
 | `/static/...` 404 | Set start command to `./scripts/render_start.sh`; confirm build runs `./build.sh`. |
 | CSRF failed on login/register | Fix `CSRF_TRUSTED_ORIGINS` (exact HTTPS URL). |
 | `/healthz/` DB error | Link Postgres; set `DATABASE_URL`. |
+| Push to `main` does not deploy | Confirm Blueprint sync applied `autoDeployTrigger: commit`; check service Settings → Auto-Deploy is On Commit; ensure the linked branch is `main`. |
 | Cold start slow | Free tier spins down; first request may take 30–60s. |
 | Uploads vanish after redeploy | Use Google Drive in Admin → Integration Configuration. |
 
 </details>
 
-Blueprint: [`render.yaml`](render.yaml) (service name `ai-hackathon-sept-2026`).
+Blueprint: [`render.yaml`](render.yaml) (service name `ai-hackathon-sept-2026`; `branch: main`, `autoDeployTrigger: commit`).
 
 ### Manual / VPS
 

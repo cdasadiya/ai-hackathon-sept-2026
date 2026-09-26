@@ -3,6 +3,9 @@ services:
     name: ai-hackathon-sept-2026
     env: python
     plan: free
+    branch: main
+    # Deploy on every push to the linked branch (replaces deprecated autoDeploy: true).
+    autoDeployTrigger: commit
     buildCommand: "./build.sh"
     startCommand: "./scripts/render_start.sh"
     envVars:
