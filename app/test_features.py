@@ -770,3 +770,57 @@ class AdminAndCommandTests(FeatureDataMixin, TestCase):
             Appointment.objects.filter(appointment_id__startswith="APT-2026-900").values_list("status", flat=True)
         )
         self.assertEqual(statuses, {"PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"})
+
+
+class DemoTokenAndReportScopeTests(FeatureDataMixin, TestCase):
+    @patch("app.urls.ensure_demo_accounts")
+    def test_jwt_token_endpoint_repairs_demo_accounts(self, ensure):
+        self.make_patient("jwt_pat")
+        client = APIClient()
+        response = client.post(
+            reverse("token_obtain_pair"),
+            {"username": "jwt_pat", "password": self.password},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        ensure.assert_called()
+
+    def test_patient_api_lists_doctor_uploaded_reports_for_self(self):
+        patient_user, patient = self.make_patient("scope_pat")
+        doctor_user, doctor = self.make_doctor("scope_doc")
+        other_user, other = self.make_patient("scope_other")
+        appt = self.book(patient, doctor, hours=8)
+        own = BloodReport.objects.create(
+            uploader=patient_user,
+            patient=patient,
+            appointment=appt,
+            original_filename="own.pdf",
+        )
+        by_doctor = BloodReport.objects.create(
+            uploader=doctor_user,
+            patient=patient,
+            appointment=appt,
+            original_filename="doctor_upload.pdf",
+        )
+        foreign = BloodReport.objects.create(
+            uploader=other_user,
+            patient=other,
+            original_filename="other.pdf",
+        )
+
+        patient_api = self.api(patient_user)
+        listed = patient_api.get("/api/reports/")
+        self.assertEqual(listed.status_code, 200)
+        ids = {row["id"] for row in listed.data}
+        self.assertIn(own.pk, ids)
+        self.assertIn(by_doctor.pk, ids)
+        self.assertNotIn(foreign.pk, ids)
+
+        doctor_api = self.api(doctor_user)
+        doctor_listed = doctor_api.get("/api/reports/")
+        self.assertEqual(doctor_listed.status_code, 200)
+        doctor_ids = {row["id"] for row in doctor_listed.data}
+        self.assertIn(by_doctor.pk, doctor_ids)
+        self.assertIn(own.pk, doctor_ids)
+        self.assertNotIn(foreign.pk, doctor_ids)
