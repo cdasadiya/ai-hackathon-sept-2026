@@ -22,11 +22,7 @@ fi
 echo "=== Checking migration status ==="
 python manage.py showmigrations
 
-if [ "${SEED_DEMO_USERS:-true}" = "true" ]; then
-  echo "=== Seeding demo users ==="
-  python manage.py seed_demo_users
-else
-  echo "=== Skipping demo user seed (SEED_DEMO_USERS=false) ==="
-fi
+echo "=== demo users (build; skipped if no DATABASE_URL) ==="
+./scripts/seed_demo_if_enabled.sh
 
 echo "=== Build complete ==="

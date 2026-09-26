@@ -16,6 +16,9 @@ fi
 echo "=== migrate ==="
 python manage.py migrate --no-input
 
+echo "=== demo users (production Postgres) ==="
+./scripts/seed_demo_if_enabled.sh
+
 echo "=== gunicorn ==="
 PORT="${PORT:-8000}"
 exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT}" --log-file - --workers 2 --timeout 120
