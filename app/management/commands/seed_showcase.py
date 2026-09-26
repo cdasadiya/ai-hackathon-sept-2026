@@ -212,11 +212,26 @@ BLOOD_REPORTS = [
     ("unlinked_ferritin_sneha.pdf", "case_patient_03", "", "PDF", "FAILED", "Patient blood reports", {"error": "Webhook timeout."}),
     ("preview_thyroid_meera.pdf", "case_patient_09", "APT-2026-900010", "PDF", "PENDING", "Patient blood reports", {}),
     ("old_scan_anjali.png", "case_patient_05", "", "IMAGE", "DONE", "Patient blood reports", {"summary": "Archived image with no appointment."}),
+    # Companion DONE labs so HealthReport can reach 10 while the files above keep PENDING/PROCESSING/FAILED coverage.
+    ("lipid_followup_priya.pdf", "case_patient_01", "APT-2026-900001", "PDF", "DONE", "Patient blood reports", {"summary": "Repeat lipids after diet change.", "flag": "NORMAL"}),
+    ("vitd_panel_rahul.pdf", "case_patient_04", "APT-2026-900004", "PDF", "DONE", "Patient blood reports", {"summary": "Vitamin D insufficient.", "flag": "LOW"}),
+    ("iron_study_sneha.pdf", "case_patient_03", "", "PDF", "DONE", "Patient blood reports", {"summary": "Iron studies after ferritin failure retry.", "flag": "LOW"}),
+    ("glucose_log_harpreet.pdf", "case_patient_10", "APT-2026-900009", "PDF", "DONE", "Patient blood reports", {"summary": "Home glucose log transcribed.", "flag": "HIGH"}),
+    ("thyroid_full_meera.pdf", "case_patient_09", "APT-2026-900010", "PDF", "DONE", "Patient blood reports", {"summary": "Full thyroid panel for oncology prep."}),
+    ("wellness_cbc_karan.pdf", "case_patient_06", "APT-2026-900006", "PDF", "DONE", "Patient blood reports", {"summary": "Baseline wellness CBC.", "flag": "NORMAL"}),
 ]
 
 HEALTH_REPORTS = [
     ("cbc_priya_completed.pdf", "case_patient_01", "priya_health_report.pdf", {"summary": "Borderline cholesterol. Repeat in 8 weeks."}, at(2026, 9, 10, 12, 0)),
     ("hba1c_harpreet.pdf", "case_patient_10", "harpreet_health_report.pdf", {"summary": "Diabetes follow-up. Email not sent."}, None),
+    ("walkin_cbc_amit.pdf", "case_patient_02", "amit_health_report.pdf", {"summary": "CBC within normal limits. Standalone walk-in."}, at(2026, 9, 21, 9, 0)),
+    ("old_scan_anjali.png", "case_patient_05", "anjali_health_report.pdf", {"summary": "Archived image reviewed. No acute findings."}, None),
+    ("lipid_followup_priya.pdf", "case_patient_01", "priya_lipid_health.pdf", {"summary": "Lipids improved after diet advice."}, at(2026, 9, 20, 12, 0)),
+    ("vitd_panel_rahul.pdf", "case_patient_04", "rahul_vitd_health.pdf", {"summary": "Start vitamin D supplementation."}, at(2026, 9, 26, 17, 0)),
+    ("iron_study_sneha.pdf", "case_patient_03", "sneha_iron_health.pdf", {"summary": "Iron deficiency. Dietary counseling."}, at(2026, 9, 23, 10, 0)),
+    ("glucose_log_harpreet.pdf", "case_patient_10", "harpreet_glucose_health.pdf", {"summary": "Fasting glucose remains high."}, None),
+    ("thyroid_full_meera.pdf", "case_patient_09", "meera_thyroid_health.pdf", {"summary": "TSH borderline. Recheck at oncology visit."}, None),
+    ("wellness_cbc_karan.pdf", "case_patient_06", "karan_wellness_health.pdf", {"summary": "Wellness CBC unremarkable."}, at(2026, 9, 28, 7, 0)),
 ]
 
 COMMENTS = [
@@ -224,6 +239,12 @@ COMMENTS = [
     ("APT-2026-900002", "case_patient_02", "I need to cancel. I am travelling.", at(2026, 9, 11, 18, 5)),
     ("APT-2026-900004", "case_doctor_07", "Photo received. I will compare it with last month.", at(2026, 9, 26, 15, 0)),
     ("APT-2026-900009", "case_doctor_10", "Bring the home glucose log next time.", at(2026, 8, 20, 8, 10)),
+    ("APT-2026-900001", "case_patient_01", "Thank you doctor. I will book the lipid repeat.", at(2026, 9, 10, 10, 5)),
+    ("APT-2026-900003", "case_doctor_06", "No-show recorded. Please rebook within two weeks.", at(2026, 9, 18, 9, 0)),
+    ("APT-2026-900006", "case_patient_06", "I uploaded the neuro panel PDF for this visit.", at(2026, 9, 22, 12, 0)),
+    ("APT-2026-900007", "case_doctor_08", "Sinus symptoms noted. Labs attached for review.", at(2026, 9, 25, 8, 0)),
+    ("APT-2026-900008", "case_patient_08", "Understood — I will wait until bookings reopen.", at(2026, 9, 20, 5, 0)),
+    ("APT-2026-900010", "case_doctor_09", "Bring prior oncology labs to the November visit.", at(2026, 9, 19, 10, 0)),
 ]
 
 AUDIT_EVENTS = [
@@ -232,6 +253,11 @@ AUDIT_EVENTS = [
     ("case_patient_01", "showcase.report.uploaded", {"file": "cbc_priya_completed.pdf"}, at(2026, 9, 10, 8, 50)),
     ("case_patient_02", "showcase.appointment.cancelled", {"appointment_id": "APT-2026-900002"}, at(2026, 9, 11, 18, 6)),
     ("case_doctor_07", "showcase.appointment.confirmed", {"appointment_id": "APT-2026-900004"}, at(2026, 9, 24, 9, 5)),
+    ("case_doctor_04", "showcase.doctor.pending", {"username": "case_doctor_04"}, at(2026, 8, 3, 9, 0)),
+    ("case_patient_06", "showcase.report.uploaded", {"file": "neuro_panel_karan.pdf"}, at(2026, 9, 22, 11, 45)),
+    ("case_doctor_08", "showcase.appointment.pending", {"appointment_id": "APT-2026-900007"}, at(2026, 9, 25, 7, 25)),
+    ("case_patient_08", "showcase.appointment.cancelled", {"appointment_id": "APT-2026-900008"}, at(2026, 9, 20, 4, 10)),
+    ("case_doctor_09", "showcase.appointment.confirmed", {"appointment_id": "APT-2026-900010"}, at(2026, 9, 18, 15, 5)),
 ]
 
 
