@@ -315,6 +315,37 @@ class AppointmentTests(FeatureDataMixin, TestCase):
         blocked = stranger.post(reverse("cancel_appointment", args=[confirmed.appointment_id]))
         self.assertEqual(blocked.status_code, 404)
 
+    def test_mutating_actions_reject_get(self):
+        """State-changing browser routes must not accept GET (CSRF via img/prefetch)."""
+        _, patient = self.make_patient("get_mut_pat")
+        admin = self.make_admin("get_mut_admin")
+        _, pending_doc = self.make_doctor("get_mut_doc", approved=False)
+        _, approved_doc = self.make_doctor("get_mut_doc2", approved=True)
+        appt = self.book(patient, approved_doc, hours=6)
+
+        patient_client = self.login("get_mut_pat")
+        cancel_get = patient_client.get(reverse("cancel_appointment", args=[appt.appointment_id]))
+        self.assertEqual(cancel_get.status_code, 405)
+        appt.refresh_from_db()
+        self.assertEqual(appt.status, Appointment.Status.PENDING)
+
+        admin_client = self.login(admin.username)
+        approve_get = admin_client.get(reverse("approve_doctor", args=[pending_doc.pk]))
+        self.assertEqual(approve_get.status_code, 405)
+        pending_doc.refresh_from_db()
+        self.assertEqual(pending_doc.verification_status, DoctorProfile.VerificationStatus.PENDING)
+
+        reject_get = admin_client.get(reverse("reject_doctor", args=[pending_doc.pk]))
+        self.assertEqual(reject_get.status_code, 405)
+
+        status_get = self.login("get_mut_doc2").get(
+            reverse("update_appointment_status", args=[appt.appointment_id]),
+            {"status": Appointment.Status.COMPLETED},
+        )
+        self.assertEqual(status_get.status_code, 405)
+        appt.refresh_from_db()
+        self.assertEqual(appt.status, Appointment.Status.PENDING)
+
     def test_search_is_not_sql_and_unknown_page_is_safe(self):
         _, patient = self.make_patient("search_pat")
         _, doctor = self.make_doctor("search_doc")
@@ -358,6 +389,15 @@ class ReportAndCommentTests(FeatureDataMixin, TestCase):
             follow=True,
         )
         self.assertEqual(wrong_type.status_code, 200)
+        self.assertEqual(BloodReport.objects.filter(appointment=appt).count(), 1)
+
+        empty = SimpleUploadedFile("empty.pdf", b"", content_type="application/pdf")
+        empty_upload = client.post(
+            reverse("upload_report"),
+            {"appointment_id": appt.appointment_id, "report_file": empty},
+            follow=True,
+        )
+        self.assertEqual(empty_upload.status_code, 200)
         self.assertEqual(BloodReport.objects.filter(appointment=appt).count(), 1)
 
     def test_patient_cannot_upload_against_another_appointment(self):

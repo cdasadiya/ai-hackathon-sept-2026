@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -134,6 +136,7 @@ class RegisterView(View):
             messages.error(request, "Registration could not be completed. Please try again.")
             return render(request, self.template_name, {"form": RegistrationForm(request.POST)})
 
+@require_POST
 def custom_logout(request):
     from django.contrib.auth import logout
     logout(request); return redirect("home")
@@ -211,11 +214,11 @@ def patient_appointment_detail(request, appointment_id):
 
 
 @login_required
+@require_POST
 def book_appointment(request):
     if request.user.role != User.Role.PATIENT:
         return JsonResponse({"detail": "Forbidden"}, status=403)
     profile = get_object_or_404(PatientProfile, user=request.user)
-    if request.method != "POST": return redirect("patient_dashboard")
     form = UnifiedAppointmentForm(request.POST, request.FILES)
     if form.is_valid():
         appointment = form.save(commit=False)
@@ -258,6 +261,7 @@ def book_appointment(request):
     return redirect("patient_dashboard")
 
 @login_required
+@require_POST
 def cancel_appointment(request, appointment_id):
     if request.user.role != User.Role.PATIENT:
         return JsonResponse({"detail": "Forbidden"}, status=403)
@@ -272,9 +276,8 @@ def cancel_appointment(request, appointment_id):
     return redirect("patient_dashboard")
 
 @login_required
+@require_POST
 def add_report_comment(request, appointment_id):
-    if request.method != "POST":
-        return redirect("patient_dashboard")
     if request.user.role == User.Role.PATIENT:
         profile = get_object_or_404(PatientProfile, user=request.user)
         appt = get_object_or_404(Appointment, appointment_id=appointment_id, patient=profile)
@@ -418,14 +421,13 @@ def doctor_appointment_detail(request, appointment_id):
 
 
 @login_required
+@require_POST
 def doctor_update_appointment(request, appointment_id):
     """Doctor updates status + remarks together via DoctorRemarkForm."""
     if request.user.role != User.Role.DOCTOR:
         return JsonResponse({"detail": "Forbidden"}, status=403)
     doc_profile = get_object_or_404(DoctorProfile, user=request.user)
     appt = get_object_or_404(Appointment, appointment_id=appointment_id, doctor=doc_profile)
-    if request.method != "POST":
-        return redirect("doctor_appointment_detail", appointment_id=appointment_id)
     form = DoctorRemarkForm(request.POST)
     if form.is_valid():
         new_status = form.cleaned_data["status"]
@@ -439,6 +441,7 @@ def doctor_update_appointment(request, appointment_id):
     return redirect("doctor_appointment_detail", appointment_id=appointment_id)
 
 @login_required
+@require_POST
 def update_appointment_status(request, appointment_id):
     if request.user.role not in [User.Role.DOCTOR, User.Role.ADMIN]:
         return JsonResponse({"detail": "Forbidden"}, status=403)
@@ -456,6 +459,7 @@ def update_appointment_status(request, appointment_id):
     return redirect("doctor_dashboard")
 
 @login_required
+@require_POST
 def approve_doctor(request, doctor_id):
     if request.user.role != User.Role.ADMIN:
         messages.error(request, "Access denied."); return redirect("home")
@@ -466,6 +470,7 @@ def approve_doctor(request, doctor_id):
     return redirect("admin_dashboard")
 
 @login_required
+@require_POST
 def reject_doctor(request, doctor_id):
     if request.user.role != User.Role.ADMIN:
         messages.error(request, "Access denied."); return redirect("home")
@@ -512,8 +517,9 @@ def doctor_profile_edit(request):
     return render(request, "doctor/profile.html", {"form": form, "profile": profile})
 
 
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+# Mutating browser actions above are POST-only (templates already POST + CSRF).
+# Keeping GET open would allow CSRF via <img src="..."> / prefetch.
+
 
 @csrf_exempt
 @require_POST

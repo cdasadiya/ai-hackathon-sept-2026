@@ -111,6 +111,8 @@ class UnifiedAppointmentForm(forms.ModelForm):
         report_file = self.cleaned_data.get("report_file")
         if not report_file:
             return report_file
+        if report_file.size <= 0:
+            raise ValidationError("Uploaded file is empty. Please choose a valid report file.")
         # File size check
         if report_file.size > MAX_REPORT_SIZE_MB * 1024 * 1024:
             raise ValidationError(
@@ -230,6 +232,8 @@ class ReportUploadForm(forms.Form):
         report_file = self.cleaned_data.get("report_file")
         if not report_file:
             return report_file
+        if report_file.size <= 0:
+            raise ValidationError("Uploaded file is empty. Please choose a valid report file.")
         if report_file.size > MAX_REPORT_SIZE_MB * 1024 * 1024:
             raise ValidationError(
                 f"File exceeds {MAX_REPORT_SIZE_MB} MB limit."
