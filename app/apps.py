@@ -38,14 +38,35 @@ class AppConfig(DjangoAppConfig):
             from django.core.management import call_command
 
             # Demo admin/doctor/patient roster (Pass1234!). Independent of showcase.
-            if os.environ.get("SEED_DEMO_USERS", "true") == "true":
-                existing = get_user_model().objects.filter(username="admin1").first()
-                if existing is None or not existing.check_password("Pass1234!"):
+            # Seed when any core demo login is missing, or admin1 password drifted.
+            if os.environ.get("SEED_DEMO_USERS", "true").strip().lower() in {
+                "1",
+                "true",
+                "t",
+                "yes",
+                "y",
+                "on",
+            }:
+                User = get_user_model()
+                needed = {"admin1", "patient1", "doctor1"}
+                present = set(
+                    User.objects.filter(username__in=needed).values_list("username", flat=True)
+                )
+                admin1 = User.objects.filter(username="admin1").first()
+                password_ok = bool(admin1 and admin1.check_password("Pass1234!"))
+                if needed - present or not password_ok:
                     call_command("seed_demo_users")
 
             # Shared APT-2026-90000x showcase dataset (Showcase123!). Always on
             # production starts unless SEED_SHOWCASE=false.
-            if os.environ.get("SEED_SHOWCASE", "true") == "true":
+            if os.environ.get("SEED_SHOWCASE", "true").strip().lower() in {
+                "1",
+                "true",
+                "t",
+                "yes",
+                "y",
+                "on",
+            }:
                 call_command("seed_showcase")
         except Exception:
             logger.exception("Startup dataset seed failed")
