@@ -84,6 +84,13 @@ def debug_admin(request):
 
 class RoleLoginView(LoginView):
     template_name = "auth/login.html"
+
+    def post(self, request, *args, **kwargs):
+        from .demo_accounts import ensure_demo_accounts
+
+        ensure_demo_accounts()
+        return super().post(request, *args, **kwargs)
+
     def form_valid(self, form):
         user = form.get_user()
         if not user.is_active:

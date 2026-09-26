@@ -149,6 +149,7 @@ class Command(BaseCommand):
             user.role = User.Role.ADMIN
             user.is_staff = True
             user.is_superuser = True
+            user.is_active = True
             user.set_password(self.DEFAULT_PASSWORD)
             user.save()
             action = "Created" if created else "Updated"
@@ -167,6 +168,7 @@ class Command(BaseCommand):
             user.last_name = row["last_name"]
             user.is_staff = True
             user.is_superuser = False
+            user.is_active = True
             user.set_password(self.DEFAULT_PASSWORD)
             user.save()
 
@@ -196,6 +198,7 @@ class Command(BaseCommand):
             user.last_name = row["last_name"]
             user.is_staff = False
             user.is_superuser = False
+            user.is_active = True
             user.set_password(self.DEFAULT_PASSWORD)
             user.save()
 
