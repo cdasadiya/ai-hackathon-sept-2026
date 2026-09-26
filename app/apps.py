@@ -34,24 +34,11 @@ class AppConfig(DjangoAppConfig):
         if not any(flag in argv for flag in ("gunicorn", "runserver")):
             return
         try:
-            from django.core.management import call_command
-
             from .demo_accounts import ensure_demo_accounts
 
-            # Create admin1/doctor1/patient1 even when SEED_DEMO_USERS is off,
-            # because a skipped seed leaves the login form with no accounts.
+            # Repair admin1/doctor1/patient1 and showcase case_* accounts.
+            # Ignores SEED_DEMO_USERS=false so a skipped start script cannot
+            # leave the login form with an empty user table.
             ensure_demo_accounts()
-
-            # Shared APT-2026-90000x showcase dataset (Showcase123!). Always on
-            # production starts unless SEED_SHOWCASE=false.
-            if os.environ.get("SEED_SHOWCASE", "true").strip().lower() in {
-                "1",
-                "true",
-                "t",
-                "yes",
-                "y",
-                "on",
-            }:
-                call_command("seed_showcase")
         except Exception:
             logger.exception("Startup dataset seed failed")

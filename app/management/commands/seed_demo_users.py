@@ -166,7 +166,7 @@ class Command(BaseCommand):
             user.role = User.Role.DOCTOR
             user.first_name = row["first_name"]
             user.last_name = row["last_name"]
-            user.is_staff = True
+            user.is_staff = False
             user.is_superuser = False
             user.is_active = True
             user.set_password(self.DEFAULT_PASSWORD)

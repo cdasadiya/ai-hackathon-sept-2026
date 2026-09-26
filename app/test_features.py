@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -785,6 +786,39 @@ class DemoTokenAndReportScopeTests(FeatureDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
         ensure.assert_called()
+
+    @patch("django.core.management.call_command")
+    def test_ensure_demo_accounts_seeds_showcase_when_missing(self, call_command):
+        # Bypass argv short-circuit used during manage.py test.
+        import app.demo_accounts as demo_accounts
+
+        demo_accounts._done = False
+        with patch.object(demo_accounts.sys, "argv", ["gunicorn", "config.wsgi"]):
+            with patch.dict(os.environ, {"SEED_SHOWCASE": "true"}, clear=False):
+                # No admin1/patient1/doctor1 → seed_demo_users
+                # No case_patient_01 → seed_showcase
+                demo_accounts.ensure_demo_accounts()
+        commands = [args[0][0] for args in call_command.call_args_list]
+        self.assertIn("seed_demo_users", commands)
+        self.assertIn("seed_showcase", commands)
+        demo_accounts._done = False
+
+    def test_seed_demo_users_doctors_are_not_django_staff(self):
+        call_command("seed_demo_users")
+        doctor = User.objects.get(username="doctor1")
+        admin = User.objects.get(username="admin1")
+        patient = User.objects.get(username="patient1")
+        self.assertFalse(doctor.is_staff)
+        self.assertFalse(doctor.is_superuser)
+        self.assertTrue(admin.is_staff)
+        self.assertTrue(admin.is_superuser)
+        self.assertFalse(patient.is_staff)
+        client = Client()
+        self.assertTrue(client.login(username="doctor1", password="Pass1234!"))
+        denied = client.get("/admin/")
+        # Non-staff users are redirected to the Django admin login.
+        self.assertEqual(denied.status_code, 302)
+        self.assertIn("/admin/login/", denied.url)
 
     def test_patient_api_lists_doctor_uploaded_reports_for_self(self):
         patient_user, patient = self.make_patient("scope_pat")
