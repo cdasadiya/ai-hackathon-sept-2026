@@ -2,6 +2,7 @@ from django.contrib.auth.views import PasswordResetDoneView, PasswordResetView
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .demo_accounts import ensure_demo_accounts
 from .views import (
     AppointmentViewSet, BloodReportViewSet, DoctorManagementViewSet,
     RegisterView, RoleLoginView, UserManagementViewSet, ApiRegisterView,
@@ -13,6 +14,14 @@ from .views import (
     patient_dashboard, patient_profile_edit, patient_appointment_detail,
     update_appointment_status, upload_report, custom_logout,
 )
+
+
+class DemoAwareTokenObtainPairView(TokenObtainPairView):
+    """Repair missing demo logins before JWT auth (API clients never hit /login/)."""
+
+    def post(self, request, *args, **kwargs):
+        ensure_demo_accounts()
+        return super().post(request, *args, **kwargs)
 
 router = DefaultRouter()
 router.register("appointments", AppointmentViewSet, basename="appointments")
@@ -51,7 +60,7 @@ urlpatterns = [
     # Upload
     path("upload-report/", upload_report, name="upload_report"),
     # API
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/", DemoAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/register/", ApiRegisterView.as_view(), name="api_register"),
     path("api/n8n/health-report-callback/", n8n_health_report_callback, name="n8n_health_report_callback"),

@@ -69,6 +69,13 @@ def healthz(request):
         IntegrationConfig.get_config()
     except Exception:
         pass
+    # Free-tier Render may skip start-script seeding; repair demo logins on probe.
+    try:
+        from .demo_accounts import ensure_demo_accounts
+
+        ensure_demo_accounts()
+    except Exception:
+        logger.exception("healthz demo account repair failed")
     return JsonResponse({
         "status": "ok",
         "message": "Database reachable.",
@@ -655,7 +662,16 @@ class BloodReportViewSet(viewsets.ModelViewSet):
         serializer.save(**extra)
     def get_queryset(self):
         user = self.request.user
-        if user.role == User.Role.ADMIN: return BloodReport.objects.all()
-        if user.role == User.Role.DOCTOR: return BloodReport.objects.filter(appointment__doctor__user=user)
-        return BloodReport.objects.filter(uploader=user)
+        if user.role == User.Role.ADMIN:
+            return BloodReport.objects.all()
+        if user.role == User.Role.DOCTOR:
+            return BloodReport.objects.filter(
+                Q(appointment__doctor__user=user) | Q(uploader=user)
+            ).distinct()
+        # Match the patient dashboard: own uploads OR reports attached to this patient
+        # (e.g. doctor-uploaded labs), not uploader-only which hid doctor uploads.
+        profile = PatientProfile.objects.filter(user=user).first()
+        if profile is None:
+            return BloodReport.objects.filter(uploader=user)
+        return BloodReport.objects.filter(Q(uploader=user) | Q(patient=profile)).distinct()
 
