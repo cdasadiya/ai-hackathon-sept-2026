@@ -105,12 +105,33 @@ class AuthenticationTests(FeatureDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Dashboard")
 
+    def test_role_words_sign_in_as_demo_accounts(self):
+        self.make_admin("admin1")
+        self.make_doctor("doctor1")
+        self.make_patient("patient1")
+        client = Client()
+        expected = {
+            "admin": "admin1",
+            "ADMIN": "admin1",
+            "doctor": "doctor1",
+            "patient": "patient1",
+        }
+        for username, account in expected.items():
+            response = client.post(
+                reverse("login"),
+                {"username": username, "password": self.password},
+                follow=True,
+            )
+            self.assertEqual(response.status_code, 200, username)
+            self.assertEqual(response.wsgi_request.user.username, account)
+            client.logout()
+
     def test_login_rejects_bad_password_and_inactive_user(self):
         user, _ = self.make_patient("pat_bad")
         client = Client()
         bad = client.post(reverse("login"), {"username": "pat_bad", "password": "wrong-pass"})
         self.assertEqual(bad.status_code, 200)
-        self.assertContains(bad, "Please enter a correct")
+        self.assertContains(bad, "do not match")
         user.is_active = False
         user.save(update_fields=["is_active"])
         inactive = client.post(

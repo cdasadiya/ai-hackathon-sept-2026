@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
@@ -89,8 +90,20 @@ def debug_admin(request):
     return JsonResponse({"status": "ok", "user": request.user.username})
 
 
+class RoleAuthenticationForm(AuthenticationForm):
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": (
+            "That username and password do not match. "
+            "Use admin, doctor, or patient with password Pass1234! "
+            "(admin1, doctor1, and patient1 also work)."
+        ),
+    }
+
+
 class RoleLoginView(LoginView):
     template_name = "auth/login.html"
+    authentication_form = RoleAuthenticationForm
 
     def post(self, request, *args, **kwargs):
         from .demo_accounts import ensure_demo_accounts

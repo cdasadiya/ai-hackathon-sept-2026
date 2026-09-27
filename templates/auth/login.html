@@ -37,7 +37,7 @@
       {% csrf_token %}
       <div class="mb-3">
         <label for="id_username">Username</label>
-        <input type="text" name="username" id="id_username" class="form-control" placeholder="Your username" autocomplete="username" required value="{{ form.username.value|default:'' }}">
+        <input type="text" name="username" id="id_username" class="form-control" placeholder="admin, doctor, or patient" autocomplete="username" required value="{{ form.username.value|default:'' }}">
         {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>{% endif %}
       </div>
       <div class="mb-4">
@@ -52,6 +52,13 @@
       </div>
       <button type="submit" class="btn nx-btn-brand w-100">Sign in</button>
     </form>
+
+    <div class="mt-4 small" style="color:#57534e;background:#fafaf9;border:1px solid #e7e5e4;border-radius:12px;padding:12px 14px">
+      <div class="fw-semibold mb-1" style="color:#1c1917">Demo sign-in</div>
+      <div><strong>Admin</strong> — username <code>admin</code> or <code>admin1</code>, password <code>Pass1234!</code></div>
+      <div><strong>Doctor</strong> — username <code>doctor</code> or <code>doctor1</code>, password <code>Pass1234!</code></div>
+      <div><strong>Patient</strong> — username <code>patient</code> or <code>patient1</code>, password <code>Pass1234!</code></div>
+    </div>
 
     <div class="nx-divider"><span>New to NexusHealth?</span></div>
     <div class="text-center"><a href="{% url 'register' %}" class="nx-auth-link">Create an account →</a></div>

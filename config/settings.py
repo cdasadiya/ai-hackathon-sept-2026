@@ -112,6 +112,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "app.User"
 AUTHENTICATION_BACKENDS = [
+    "app.auth_backends.RoleAliasBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 LOGIN_URL = "/login/"
