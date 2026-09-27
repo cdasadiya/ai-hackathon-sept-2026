@@ -1,0 +1,31 @@
+---
+description: Nexus Health hackathon project context and layout
+alwaysApply: true
+---
+
+# Nexus Health (Hospital Blood Report Analyzer)
+
+Django 6 + DRF + JWT hospital demo: patients (appointments, lab uploads), doctors (schedule, remarks), admins (verification, integrations). PostgreSQL in CI/production; SQLite allowed locally unless `REQUIRE_POSTGRES=True`.
+
+## Layout
+
+| Path | Purpose |
+| --- | --- |
+| `app/` | Models, views, serializers, permissions, services, tests |
+| `config/` | `settings.py`, root `urls.py`, WSGI |
+| `templates/` | Role dashboards, auth, `base_dashboard.html` |
+| `static/css/nexus-theme.css` | Shared theme |
+| `scripts/` | Render smoke, seed, sync helpers |
+| `docs/hackathon/n8n/` | n8n workflow JSON |
+
+## Domain rules (do not break)
+
+- Custom `User` with roles: `ADMIN`, `DOCTOR`, `PATIENT` — use `app.permissions` (`IsAdmin`, `IsDoctor`, `IsPatient`, `IsDoctorOrAdmin`).
+- Appointments: anti–double-booking, 30-minute minimum lead time, IDs like `APT-YYYY-NNNNNN`.
+- Blood reports: local media, optional Google Drive, n8n webhook on upload; callback updates `HealthReport` / `ai_analysis`.
+- Secrets and integration config live in env / `IntegrationConfig`, never hard-coded in source.
+
+## Before finishing changes
+
+- Run targeted tests: `python manage.py test app --verbosity 2`
+- CI also runs `ruff check` (F rules on key files), `manage.py check --deploy`, and `pip-audit`

@@ -1,0 +1,30 @@
+---
+description: Deploy, scripts, and n8n/Drive integration touchpoints
+globs: render.yaml,Procfile,Dockerfile,docker-compose.yml,scripts/**/*,docs/hackathon/**/*
+alwaysApply: false
+---
+
+# Deploy and integrations
+
+## Hosting
+
+- Render: `render.yaml`, `scripts/render_start.sh`, `build.sh`, `Procfile` (Gunicorn). Health check: `/healthz/`.
+- Do not change production env vars or trigger deploys without explicit user approval.
+
+## Verification scripts
+
+After deploy-related changes, document or run locally when applicable:
+
+```bash
+./scripts/render_smoke.sh
+./scripts/production_url_audit.sh
+```
+
+## n8n and Google Drive
+
+- Workflow export: `docs/hackathon/n8n/nexus-blood-report-agent.json` — keep in sync with webhook/callback URLs documented in README.
+- Upload flow triggers n8n; callbacks update report AI fields — preserve idempotency and auth on callback endpoints when modifying views.
+
+## Demo data
+
+- Seeding via management commands under `app/management/commands/`; production seeding is gated (`SEED_DEMO_USERS`, showcase commands). Never run destructive seed/populate against non-local DBs without approval.
