@@ -1,8 +1,17 @@
+import io
+import logging
+import mimetypes
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, SuspiciousFileOperation, ValidationError
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.urls import reverse
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser):
@@ -206,11 +215,58 @@ class BloodReport(models.Model):
     def get_file_url(self):
         """Return the best available URL for the report file."""
         if self.report_file:
-            return self.report_file.url
+            return reverse("download_blood_report", args=[self.pk])
         return self.drive_link or None
+
+    @property
+    def content_type(self):
+        name = self.report_file.name if self.report_file else self.original_filename
+        guessed, _ = mimetypes.guess_type(name or "")
+        if guessed:
+            return guessed
+        return "application/pdf" if self.file_type == self.FileType.PDF else "application/octet-stream"
+
+    def open_report_file(self):
+        """Return a readable binary stream for the report, or None if the bytes are gone."""
+        if self.report_file:
+            try:
+                return self.report_file.storage.open(self.report_file.name, "rb")
+            except (OSError, SuspiciousFileOperation):
+                pass
+        try:
+            blob = self.blob
+        except ObjectDoesNotExist:
+            return None
+        return io.BytesIO(bytes(blob.data)) if blob.data else None
 
     def __str__(self):
         return f"BloodReport #{self.pk} — {self.original_filename}"
+
+
+class BloodReportBlob(models.Model):
+    """Database copy of a report file; MEDIA_ROOT is wiped on every Render deploy."""
+
+    blood_report = models.OneToOneField(BloodReport, on_delete=models.CASCADE, related_name="blob")
+    data = models.BinaryField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Blob for BloodReport #{self.blood_report_id}"
+
+
+@receiver(post_save, sender=BloodReport)
+def store_blood_report_blob(sender, instance, raw=False, update_fields=None, **kwargs):
+    if raw or not instance.report_file:
+        return
+    if update_fields is not None and "report_file" not in update_fields:
+        return
+    try:
+        with instance.report_file.storage.open(instance.report_file.name, "rb") as fh:
+            data = fh.read()
+    except (OSError, SuspiciousFileOperation):
+        logger.warning("BloodReport #%s: file %s not readable; blob not stored.", instance.pk, instance.report_file.name)
+        return
+    BloodReportBlob.objects.update_or_create(blood_report=instance, defaults={"data": data})
 
 
 class HealthReport(models.Model):

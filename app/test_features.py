@@ -1,11 +1,13 @@
 import json
 import os
+import shutil
+import tempfile
 from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -474,6 +476,79 @@ class ReportAndCommentTests(FeatureDataMixin, TestCase):
         self.assertEqual(invalid.status_code, 200)
         appt.refresh_from_db()
         self.assertEqual(appt.status, Appointment.Status.COMPLETED)
+
+
+class ReportDownloadTests(FeatureDataMixin, TestCase):
+    """Test runner forces DEBUG=False, matching production on Render."""
+
+    def setUp(self):
+        self.media_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.media_dir, ignore_errors=True)
+        media_override = override_settings(MEDIA_ROOT=self.media_dir)
+        media_override.enable()
+        self.addCleanup(media_override.disable)
+        _, self.patient = self.make_patient("dl_pat")
+        _, self.doctor = self.make_doctor("dl_doc")
+        self.appt = self.book(self.patient, self.doctor, hours=6)
+
+    @patch("app.views.trigger_n8n_webhook_async")
+    def upload(self, webhook):
+        pdf = SimpleUploadedFile("labs.pdf", b"%PDF-1.4 download test", content_type="application/pdf")
+        self.login("dl_pat").post(
+            reverse("upload_report"), {"appointment_id": self.appt.appointment_id, "report_file": pdf}
+        )
+        self.webhook_payload = webhook.call_args.args[0]
+        return BloodReport.objects.get(appointment=self.appt)
+
+    def download(self, client, url):
+        response = client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 download test")
+
+    def test_owner_doctor_and_admin_can_download(self):
+        report = self.upload()
+        url = report.get_file_url()
+        self.assertEqual(url, reverse("download_blood_report", args=[report.pk]))
+        self.download(self.login("dl_pat"), url)
+        self.download(self.login("dl_doc"), url)
+        self.download(self.login(self.make_admin("dl_admin").username), url)
+
+    def test_legacy_media_url_is_served(self):
+        report = self.upload()
+        self.download(self.login("dl_pat"), f"/media/{report.report_file.name}")
+
+    def test_download_survives_wiped_media_folder(self):
+        report = self.upload()
+        os.remove(os.path.join(self.media_dir, report.report_file.name))
+        self.download(self.login("dl_pat"), report.get_file_url())
+
+    def test_missing_file_redirects_with_message(self):
+        report = self.upload()
+        report.blob.delete()
+        os.remove(os.path.join(self.media_dir, report.report_file.name))
+        response = self.login("dl_pat").get(report.get_file_url(), follow=True)
+        self.assertRedirects(response, reverse("patient_dashboard"))
+        self.assertContains(response, "no longer available")
+
+    def test_other_users_and_anonymous_are_blocked(self):
+        report = self.upload()
+        url = report.get_file_url()
+        self.make_patient("dl_other_pat")
+        self.make_doctor("dl_other_doc")
+        self.assertEqual(self.login("dl_other_pat").get(url).status_code, 404)
+        self.assertEqual(self.login("dl_other_doc").get(url).status_code, 404)
+        self.assertEqual(self.login("dl_other_pat").get(f"/media/{report.report_file.name}").status_code, 404)
+        anon = Client().get(url)
+        self.assertEqual(anon.status_code, 302)
+        self.assertIn(reverse("login"), anon["Location"])
+
+    def test_signed_webhook_link_works_without_session(self):
+        report = self.upload()
+        link = self.webhook_payload["drive_link"]
+        self.assertIn("sig=", link)
+        self.download(Client(), link)
+        self.assertEqual(Client().get(f"{report.get_file_url()}?sig=forged").status_code, 302)
 
 
 class ProfileTests(FeatureDataMixin, TestCase):

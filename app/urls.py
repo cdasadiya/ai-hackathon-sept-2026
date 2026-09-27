@@ -8,7 +8,7 @@ from .views import (
     RegisterView, RoleLoginView, UserManagementViewSet, ApiRegisterView,
     admin_dashboard, approve_doctor, reject_doctor,
     book_appointment, cancel_appointment, add_report_comment,
-    debug_admin, doctor_dashboard, doctor_profile_edit, doctor_appointment_detail,
+    debug_admin, download_blood_report, doctor_dashboard, doctor_profile_edit, doctor_appointment_detail,
     doctor_update_appointment,
     healthz, home, n8n_health_report_callback,
     patient_dashboard, patient_profile_edit, patient_appointment_detail,
@@ -57,8 +57,9 @@ urlpatterns = [
     path("doctor/appointment/<str:appointment_id>/", doctor_appointment_detail, name="doctor_appointment_detail"),
     path("doctor/appointment/<str:appointment_id>/comment/", add_report_comment, name="doctor_add_comment"),
     path("doctor/profile/", doctor_profile_edit, name="doctor_profile_edit"),
-    # Upload
+    # Upload / download
     path("upload-report/", upload_report, name="upload_report"),
+    path("reports/<int:pk>/download/", download_blood_report, name="download_blood_report"),
     # API
     path("api/token/", DemoAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

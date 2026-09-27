@@ -3,13 +3,17 @@ from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
+from django.core.signing import BadSignature, TimestampSigner
+from django.urls import reverse
+from urllib.parse import urlencode
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import connection
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -41,6 +45,75 @@ def _resolve_patient_profile(user, appointment=None):
     if user.role == User.Role.DOCTOR and appointment:
         return appointment.patient
     return None
+
+def _dashboard_url_name(user):
+    if user.role == User.Role.ADMIN: return "admin_dashboard"
+    if user.role == User.Role.DOCTOR: return "doctor_dashboard"
+    return "patient_dashboard"
+
+def _can_access_blood_report(user, report):
+    if user.is_superuser or user.role == User.Role.ADMIN:
+        return True
+    if report.uploader_id == user.id:
+        return True
+    if user.role == User.Role.PATIENT:
+        return report.patient is not None and report.patient.user_id == user.id
+    if user.role == User.Role.DOCTOR:
+        return report.appointment is not None and report.appointment.doctor.user_id == user.id
+    return False
+
+_REPORT_LINK_SIGNER = TimestampSigner(salt="blood-report-download")
+REPORT_LINK_MAX_AGE = 60 * 60 * 24
+
+def _signed_report_url(request, report):
+    """Absolute download URL that works without a session (used by n8n)."""
+    sig = _REPORT_LINK_SIGNER.sign(str(report.pk)).split(":", 1)[1]
+    return request.build_absolute_uri(f"{reverse('download_blood_report', args=[report.pk])}?{urlencode({'sig': sig})}")
+
+def _has_valid_report_signature(request, report):
+    sig = request.GET.get("sig")
+    if not sig:
+        return False
+    try:
+        _REPORT_LINK_SIGNER.unsign(f"{report.pk}:{sig}", max_age=REPORT_LINK_MAX_AGE)
+    except BadSignature:
+        return False
+    return True
+
+def _serve_blood_report(request, report):
+    if not _can_access_blood_report(request.user, report):
+        raise Http404("Report not found.")
+    stream = report.open_report_file()
+    if stream is None:
+        logger.warning("BloodReport #%s has no stored file (%s).", report.pk, report.report_file.name)
+        messages.error(request, f"The file for report '{report.original_filename}' is no longer available on the server. Please upload it again.")
+        return redirect(_dashboard_url_name(request.user))
+    return _file_response(report, stream)
+
+def _file_response(report, stream):
+    filename = os.path.basename(report.report_file.name) if report.report_file else report.original_filename
+    return FileResponse(stream, as_attachment=True, filename=filename, content_type=report.content_type)
+
+_BLOOD_REPORT_QS = BloodReport.objects.select_related("patient", "appointment__doctor")
+
+def download_blood_report(request, pk):
+    report = get_object_or_404(_BLOOD_REPORT_QS, pk=pk)
+    if _has_valid_report_signature(request, report):
+        stream = report.open_report_file()
+        if stream is None:
+            raise Http404("Report file is no longer available.")
+        return _file_response(report, stream)
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    return _serve_blood_report(request, report)
+
+@login_required
+def blood_report_media(request, path):
+    """Old /media/blood_reports/... links (bookmarks, n8n payloads) resolve to the authenticated download."""
+    report = _BLOOD_REPORT_QS.filter(report_file=f"blood_reports/{path}").order_by("-pk").first()
+    if report is None:
+        raise Http404("Report not found.")
+    return _serve_blood_report(request, report)
 
 def _get_or_create_user_token(user):
     token, created = UserToken.objects.get_or_create(user=user)
@@ -272,7 +345,7 @@ def book_appointment(request):
                 webhook_payload = {
                     "blood_report_id": saved.id, "patient_id": profile.id,
                     "patient_email": request.user.email,
-                    "drive_link": request.build_absolute_uri(saved.report_file.url),
+                    "drive_link": _signed_report_url(request, saved),
                     "filename": safe_name, "jwt_token": jwt_token,
                     "appointment_id": appointment.appointment_id,
                 }
@@ -375,7 +448,7 @@ def upload_report(request):
         from rest_framework_simplejwt.tokens import RefreshToken
         jwt_token = str(RefreshToken.for_user(request.user).access_token)
         patient_email = patient_profile.user.email if patient_profile else request.user.email
-        file_url = request.build_absolute_uri(saved.report_file.url)
+        file_url = _signed_report_url(request, saved)
         trigger_n8n_webhook_async({
             "blood_report_id": saved.id, "patient_id": pid,
             "patient_email": patient_email, "drive_link": file_url,
