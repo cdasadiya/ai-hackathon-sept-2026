@@ -3,14 +3,17 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Nexus Health × Django\n\n1. Configure **Header Auth** on Webhook (Authorization: Bearer = Django `n8n_webhook_secret`).\n2. Attach **Google Gemini(PaLM) API** credential to **Gemini Analyze (HTTP)** (Query Auth: param `key`).\n3. Replace **REPLACE_CALLBACK_TOKEN** in Django Callback headers.\n4. Activate → copy **Production** webhook URL into Django Admin → Integration Configuration.",
-        "height": 220,
-        "width": 520,
+        "content": "## Nexus Health × Django — setup\n\n1. **Webhook Nexus Blood Report** → Header Auth credential *Django → n8n Webhook Bearer*: Name `Authorization`, Value `Bearer <Django n8n_webhook_secret>`.\n2. **Gemini Analyze HTTP** → *Google Gemini(PaLM) API* credential (API key from aistudio.google.com). Model: `gemini-flash-latest` (edit the URL to pin a version).\n3. **Django Callback** → Header Auth credential *n8n → Django Callback Bearer*: Name `Authorization`, Value `Bearer <Django n8n_callback_token>`. Change the URL if Django is not on Render.\n4. **Publish** the workflow, then paste the **Production** webhook URL (`/webhook/nexus-blood-report`) into Django Admin → Integration Configuration.\n5. Verify: upload a PDF in the app, or run `python manage.py send_report_to_n8n <report_id>`.",
+        "height": 400,
+        "width": 560,
         "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-400, 120],
+      "position": [
+        -460,
+        40
+      ],
       "id": "7786c60a-d8b7-4fbe-8fa1-cb33d1c0c14a",
       "name": "Setup Notes"
     },
@@ -18,19 +21,22 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "nexus-blood-report",
-        "responseMode": "responseNode",
         "authentication": "headerAuth",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 300],
+      "position": [
+        0,
+        300
+      ],
       "id": "2c4e3426-88d4-4fa8-892c-22662fe42da8",
       "name": "Webhook Nexus Blood Report",
       "webhookId": "nexus-blood-report-bfg",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "CONFIGURE_ME",
+          "id": "CONFIGURE_ME_WEBHOOK",
           "name": "Django → n8n Webhook Bearer"
         }
       }
@@ -38,12 +44,17 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"accepted\", \"blood_report_id\": ($json.body?.blood_report_id ?? $json.blood_report_id) } }}",
-        "options": {}
+        "responseBody": "={{ { \"status\": \"accepted\", \"blood_report_id\": ($json.body?.blood_report_id ?? null) } }}",
+        "options": {
+          "responseCode": 202
+        }
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "id": "250c38ec-62cc-4c74-900a-6f34e55e0b60",
       "name": "Respond Accepted"
     },
@@ -54,40 +65,51 @@
             {
               "id": "a1",
               "name": "blood_report_id",
-              "value": "={{ $json.body?.blood_report_id ?? $json.blood_report_id }}",
+              "value": "={{ $json.body?.blood_report_id ?? null }}",
               "type": "number"
             },
             {
               "id": "a2",
               "name": "patient_id",
-              "value": "={{ $json.body?.patient_id ?? $json.patient_id }}",
+              "value": "={{ $json.body?.patient_id ?? null }}",
               "type": "number"
             },
             {
               "id": "a3",
               "name": "file_url",
-              "value": "={{ $json.body?.drive_link ?? $json.drive_link }}",
+              "value": "={{ $json.body?.drive_link ?? '' }}",
               "type": "string"
             },
             {
               "id": "a4",
               "name": "filename",
-              "value": "={{ $json.body?.filename ?? $json.filename ?? 'report.pdf' }}",
+              "value": "={{ $json.body?.filename || 'report.pdf' }}",
               "type": "string"
             },
             {
               "id": "a5",
               "name": "appointment_id",
-              "value": "={{ $json.body?.appointment_id ?? $json.appointment_id ?? '' }}",
+              "value": "={{ $json.body?.appointment_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "mime_type",
+              "value": "={{ $json.body?.mime_type ?? '' }}",
               "type": "string"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "ignoreConversionErrors": true
+        }
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [480, 300],
+      "position": [
+        480,
+        300
+      ],
       "id": "4fed9a5d-0eaf-4f10-bd54-8d22814cd01b",
       "name": "Normalize Payload"
     },
@@ -97,7 +119,8 @@
         "options": {
           "response": {
             "response": {
-              "responseFormat": "file"
+              "responseFormat": "file",
+              "outputPropertyName": "data"
             }
           },
           "timeout": 90000
@@ -105,17 +128,27 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 300],
+      "position": [
+        720,
+        300
+      ],
       "id": "f6253cea-738a-4253-9f07-8c0586ddd772",
-      "name": "Download Report File"
+      "name": "Download Report File",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const norm = $('Normalize Payload').first().json;\nconst item = $input.first();\nconst binaryKey = item.binary ? Object.keys(item.binary)[0] : null;\n\nconst failSummary = {\n  clinician_bullets: [\n    'Report file could not be downloaded from the application URL.',\n    'Please re-upload from the patient portal or open the file manually in the doctor dashboard.'\n  ],\n  abnormal_flags: [],\n  confidence: 'low',\n  limitations: 'n8n HTTP download returned no binary (Render cold start, invalid URL, or network error).',\n  disclaimer: 'AI-generated draft for clinician review only. Not a diagnosis.'\n};\n\nif (!binaryKey) {\n  return [{ json: { ...norm, _fetchFailed: true, ai_summary: failSummary } }];\n}\n\nconst buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst base64 = buffer.toString('base64');\nconst mimeType = item.binary[binaryKey].mimeType || 'application/pdf';\nconst filename = norm.filename || 'report.pdf';\nconst appointmentId = norm.appointment_id || 'N/A';\n\nconst prompt = `You are a lab report drafting assistant for Primary Health Centre doctors in India.\nYou extract structured data from lab PDFs or images and draft notes for a duty doctor.\nYou do NOT diagnose. You do NOT state that the patient has a disease.\nUse cautious language: \"suggest review\", \"clinician to confirm\".\n\nFilename: ${filename}\nAppointment ID (if any): ${appointmentId}\n\nReturn JSON ONLY with these keys:\n- clinician_bullets (array of strings, max 8, short bullets for the duty doctor)\n- abnormal_flags (array of objects with keys: test, value, note — note must say clinician confirms)\n- confidence (high | medium | low)\n- limitations (string — scan quality, missing pages, unreadable text)\n- disclaimer (exact string): \"AI-generated draft for clinician review only. Not a diagnosis.\"\n\nIf unreadable, use empty arrays for bullets/flags, confidence \"low\", and explain in limitations.\nDo not invent test names or values not visible in the document.`;\n\nconst geminiBody = {\n  contents: [{\n    parts: [\n      { inline_data: { mime_type: mimeType, data: base64 } },\n      { text: prompt }\n    ]\n  }],\n  generationConfig: {\n    temperature: 0.2,\n    maxOutputTokens: 2048,\n    responseMimeType: 'application/json'\n  }\n};\n\nreturn [{ json: { ...norm, _fetchFailed: false, geminiBody } }];"
+        "jsCode": "const norm = $('Normalize Payload').first().json;\nconst item = $input.first();\nconst DISCLAIMER = 'AI-generated draft for clinician review only. Not a diagnosis.';\nconst SUPPORTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];\nconst BY_EXTENSION = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };\n\nconst describe = (err) => String(typeof err === 'string' ? err : (err?.message || err?.description || JSON.stringify(err))).slice(0, 300);\nconst fail = (limitations) => [{\n  json: {\n    ...norm,\n    _fetchFailed: true,\n    status: 'FAILED',\n    ai_summary: {\n      clinician_bullets: ['The report could not be analysed automatically. Open the original file from the doctor dashboard.'],\n      abnormal_flags: [],\n      confidence: 'low',\n      limitations,\n      disclaimer: DISCLAIMER,\n    },\n  },\n}];\n\nconst binaryKey = item.binary ? Object.keys(item.binary)[0] : null;\nif (!binaryKey) {\n  const detail = item.json?.error ? describe(item.json.error) : 'no file returned';\n  return fail(`Report download failed (${detail}). The signed link may have expired (24h), the file may be missing, or the app was still waking up.`);\n}\n\nconst ext = String(norm.filename || '').split('.').pop().toLowerCase();\nlet mimeType = String(item.binary[binaryKey].mimeType || '').split(';')[0].trim().toLowerCase();\nif (!mimeType || mimeType === 'application/octet-stream') {\n  mimeType = norm.mime_type || BY_EXTENSION[ext] || '';\n}\nif (mimeType === 'text/html') {\n  return fail('The download returned a web page instead of the report, usually because the signed link expired or was invalid.');\n}\nif (!SUPPORTED.includes(mimeType)) {\n  return fail(`Unsupported file type \"${mimeType || 'unknown'}\". Upload a PDF, PNG, JPEG, WEBP or HEIC file.`);\n}\n\nconst buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst prompt = `You are a lab report drafting assistant for Primary Health Centre doctors in India.\nYou extract structured data from lab PDFs or images and draft notes for a duty doctor.\nYou do NOT diagnose. You do NOT state that the patient has a disease.\nUse cautious language: \"suggest review\", \"clinician to confirm\".\n\nFilename: ${norm.filename}\nAppointment ID (if any): ${norm.appointment_id || 'N/A'}\n\nFill the JSON fields:\n- clinician_bullets: at most 8 short bullets for the duty doctor\n- abnormal_flags: one entry per out-of-range result (test, value with unit, note that the clinician confirms)\n- confidence: high | medium | low\n- limitations: scan quality, missing pages, unreadable text\n- disclaimer: exactly \"${DISCLAIMER}\"\n\nIf the document is unreadable, return empty arrays, confidence \"low\", and explain in limitations.\nDo not invent test names or values that are not visible in the document.`;\n\nconst geminiBody = {\n  contents: [{\n    role: 'user',\n    parts: [\n      { inline_data: { mime_type: mimeType, data: buffer.toString('base64') } },\n      { text: prompt },\n    ],\n  }],\n  generationConfig: {\n    temperature: 0.2,\n    maxOutputTokens: 8192,\n    responseMimeType: 'application/json',\n    responseSchema: {\n      type: 'OBJECT',\n      properties: {\n        clinician_bullets: { type: 'ARRAY', items: { type: 'STRING' } },\n        abnormal_flags: {\n          type: 'ARRAY',\n          items: {\n            type: 'OBJECT',\n            properties: { test: { type: 'STRING' }, value: { type: 'STRING' }, note: { type: 'STRING' } },\n            required: ['test', 'value', 'note'],\n          },\n        },\n        confidence: { type: 'STRING', enum: ['high', 'medium', 'low'] },\n        limitations: { type: 'STRING' },\n        disclaimer: { type: 'STRING' },\n      },\n      required: ['clinician_bullets', 'abnormal_flags', 'confidence', 'limitations', 'disclaimer'],\n    },\n  },\n};\n\nreturn [{ json: { ...norm, mime_type: mimeType, _fetchFailed: false, status: 'PROCESSING', geminiBody } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300],
+      "position": [
+        960,
+        300
+      ],
       "id": "e4d332ab-de52-4409-8cda-41c81b489f6c",
       "name": "Prepare Gemini Request"
     },
@@ -125,17 +158,18 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 2
           },
           "conditions": [
             {
               "id": "cond-fetch-ok",
               "leftValue": "={{ $json._fetchFailed }}",
-              "rightValue": false,
+              "rightValue": "",
               "operator": {
                 "type": "boolean",
-                "operation": "equals"
+                "operation": "false",
+                "singleValue": true
               }
             }
           ],
@@ -145,14 +179,17 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1200, 300],
+      "position": [
+        1200,
+        300
+      ],
       "id": "c9601af9-ce68-4f31-aa65-8461de626dee",
       "name": "IF Download OK"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googlePalmApi",
         "sendBody": true,
@@ -164,23 +201,33 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1440, 200],
+      "position": [
+        1440,
+        200
+      ],
       "id": "8462030a-e68c-417e-8598-20432e706b91",
       "name": "Gemini Analyze HTTP",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
       "credentials": {
         "googlePalmApi": {
-          "id": "CONFIGURE_ME",
+          "id": "CONFIGURE_ME_GEMINI",
           "name": "Google Gemini(PaLM) API"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const norm = $('Prepare Gemini Request').first().json;\nlet ai_summary;\n\ntry {\n  const raw = $input.first().json;\n  let text = raw.candidates?.[0]?.content?.parts?.[0]?.text || '';\n  text = text.trim();\n  if (text.startsWith('```')) {\n    text = text.replace(/^```(?:json)?\\n?/i, '').replace(/\\n?```$/i, '').trim();\n  }\n  ai_summary = JSON.parse(text);\n} catch (e) {\n  ai_summary = {\n    clinician_bullets: ['AI response could not be parsed as JSON. Doctor should review the original file manually.'],\n    abnormal_flags: [],\n    confidence: 'low',\n    limitations: `Parse error: ${e.message}`,\n    disclaimer: 'AI-generated draft for clinician review only. Not a diagnosis.'\n  };\n}\n\nif (!ai_summary.disclaimer) {\n  ai_summary.disclaimer = 'AI-generated draft for clinician review only. Not a diagnosis.';\n}\n\nreturn [{ json: { ...norm, ai_summary } }];"
+        "jsCode": "const { geminiBody, ...norm } = $('Prepare Gemini Request').first().json;\nconst raw = $input.first().json;\nconst DISCLAIMER = 'AI-generated draft for clinician review only. Not a diagnosis.';\n\nconst describe = (err) => String(typeof err === 'string' ? err : (err?.message || err?.description || JSON.stringify(err))).slice(0, 300);\nconst fallback = (limitations) => ({\n  clinician_bullets: ['AI analysis was not available. Review the original report manually.'],\n  abnormal_flags: [],\n  confidence: 'low',\n  limitations,\n  disclaimer: DISCLAIMER,\n});\n\nlet status = 'DONE';\nlet ai_summary;\nconst candidate = raw.candidates?.[0];\n\nif (raw.error || !candidate) {\n  status = 'FAILED';\n  const reason = raw.error ? describe(raw.error) : `no answer (${raw.promptFeedback?.blockReason || 'empty response'})`;\n  ai_summary = fallback(`Gemini request failed: ${reason}`);\n} else {\n  const text = (candidate.content?.parts || [])\n    .filter((part) => !part.thought && typeof part.text === 'string')\n    .map((part) => part.text)\n    .join('')\n    .trim()\n    .replace(/^```(?:json)?\\s*/i, '')\n    .replace(/\\s*```$/, '');\n  try {\n    const parsed = JSON.parse(text);\n    ai_summary = {\n      clinician_bullets: (Array.isArray(parsed.clinician_bullets) ? parsed.clinician_bullets : []).map(String).slice(0, 8),\n      abnormal_flags: (Array.isArray(parsed.abnormal_flags) ? parsed.abnormal_flags : []).map((flag) => ({\n        test: String(flag?.test ?? ''),\n        value: String(flag?.value ?? ''),\n        note: String(flag?.note ?? 'Clinician to confirm.'),\n      })),\n      confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'low',\n      limitations: String(parsed.limitations ?? ''),\n      disclaimer: DISCLAIMER,\n    };\n  } catch (e) {\n    status = 'FAILED';\n    ai_summary = fallback(`Gemini reply was not valid JSON (finish reason: ${candidate.finishReason || 'unknown'}; ${e.message}).`);\n  }\n}\n\nif (raw.modelVersion) ai_summary.model = raw.modelVersion;\n\nreturn [{ json: { ...norm, status, ai_summary } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1680, 200],
+      "position": [
+        1680,
+        200
+      ],
       "id": "f4a63de4-83cd-4cb7-b931-928196821b61",
       "name": "Parse AI Summary"
     },
@@ -202,29 +249,40 @@
             },
             {
               "id": "b3",
+              "name": "status",
+              "value": "={{ $json.status === 'FAILED' ? 'FAILED' : 'DONE' }}",
+              "type": "string"
+            },
+            {
+              "id": "b4",
               "name": "health_report_drive_file_id",
               "value": "=nexus-local-{{ $json.blood_report_id }}",
               "type": "string"
             },
             {
-              "id": "b4",
+              "id": "b5",
               "name": "health_report_drive_link",
-              "value": "={{ $json.file_url }}",
+              "value": "={{ String($json.file_url || '').split('?')[0] }}",
               "type": "string"
             },
             {
-              "id": "b5",
+              "id": "b6",
               "name": "ai_summary",
               "value": "={{ $json.ai_summary }}",
               "type": "object"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "ignoreConversionErrors": true
+        }
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1920, 300],
+      "position": [
+        1920,
+        300
+      ],
       "id": "72c12b7e-bbab-4c32-bec0-a47da57b18d0",
       "name": "Build Callback Body"
     },
@@ -232,31 +290,32 @@
       "parameters": {
         "method": "POST",
         "url": "https://ai-hackathon-sept-2026.onrender.com/api/n8n/health-report-callback/",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer REPLACE_CALLBACK_TOKEN"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ blood_report_id: $json.blood_report_id, patient_id: $json.patient_id, health_report_drive_file_id: $json.health_report_drive_file_id, health_report_drive_link: $json.health_report_drive_link, ai_summary: $json.ai_summary }) }}",
+        "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
           "timeout": 60000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2160, 300],
+      "position": [
+        2160,
+        300
+      ],
       "id": "d0fd39af-d3d2-4f2b-be93-21c7c3343a56",
-      "name": "Django Callback"
+      "name": "Django Callback",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME_CALLBACK",
+          "name": "n8n → Django Callback Bearer"
+        }
+      }
     }
   ],
   "connections": {
@@ -369,7 +428,9 @@
   },
   "pinData": {},
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
   },
   "staticData": null,
   "tags": [],
