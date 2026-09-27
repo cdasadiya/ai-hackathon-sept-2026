@@ -47,6 +47,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class BloodReportSerializer(serializers.ModelSerializer):
+    download_url = serializers.SerializerMethodField()
+
+    def get_download_url(self, obj):
+        url = obj.get_file_url()
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if url and request and url.startswith("/") else url
+
     class Meta:
         model = BloodReport
         fields = "__all__"
