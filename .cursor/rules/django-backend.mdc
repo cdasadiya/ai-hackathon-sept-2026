@@ -1,0 +1,43 @@
+---
+description: Django/DRF patterns for app and config Python code
+globs: app/**/*.py,config/**/*.py,manage.py
+alwaysApply: false
+---
+
+# Django & DRF conventions
+
+## Settings and env
+
+- Read config via `config/settings.py` helpers (`get_bool_env`, `get_list_env`). Add new toggles to `.env.example` with comments, not inline secrets.
+- Production defaults assume HTTPS when `DEBUG=False`; local Docker/CI must set `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, and `CSRF_COOKIE_SECURE` to `False` for plain HTTP tests.
+
+## Models and business logic
+
+- Keep heavy IO (Drive, n8n, external HTTP) in `app/services.py`; views stay thin.
+- Use existing `TextChoices` on models (e.g. `User.Role`, `DoctorProfile.VerificationStatus`) instead of raw strings.
+- New migrations: run `makemigrations` / review SQL impact; never edit applied migration files without explicit approval.
+
+## API and auth
+
+- Browser UI: session auth + CSRF. API: DRF viewsets with JWT (`simplejwt`) where existing patterns apply.
+- Enforce role checks with `app.permissions` classes on viewsets/views; also filter querysets so users only see their own data (patients vs doctors vs admin).
+
+## Example: role-gated permission
+
+```python
+from rest_framework.viewsets import ModelViewSet
+from app.permissions import IsDoctorOrAdmin
+
+class ExampleViewSet(ModelViewSet):
+    permission_classes = [IsDoctorOrAdmin]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == User.Role.DOCTOR:
+            return qs.filter(doctor=self.request.user.doctorprofile)
+        return qs
+```
+
+## Style
+
+- Ruff: line length 120, Python 3.14 (`ruff.toml`). Fix import order (I) and undefined names (F) before commit.

@@ -1,0 +1,26 @@
+---
+description: Django test patterns for app test modules
+globs: app/test*.py,app/tests.py
+alwaysApply: false
+---
+
+# Testing
+
+Primary suite lives in `app/test_features.py` (feature groups) plus `app/tests.py` and `app/test_production_config.py`.
+
+## Patterns to follow
+
+- Reuse `FeatureDataMixin` and `make_user(..., role=User.Role.*)` with password `Pass1234!` for consistency.
+- Use `reverse()` for URL names; API tests use `APIClient` + JWT via `RefreshToken.for_user(user)`.
+- Time-sensitive appointment tests: use `timezone.now()` and helpers like `window()` — do not hard-code wall-clock dates.
+- Mock external services (`patch` on `app.services` Drive/n8n helpers) instead of calling real webhooks in tests.
+
+## Adding coverage
+
+- Name test classes by feature area (`*Tests`) and one behavior per test method.
+- For production settings behavior, prefer `SimpleTestCase` + `override_settings` as in `test_production_config.py`.
+- After changes, run: `python manage.py test app --verbosity 2`
+
+## CI expectations
+
+- Tests run with PostgreSQL (`DATABASE_URL` in workflow), `DEBUG=False`, and secure cookies disabled for the test client (see `.github/workflows/ci.yml`).

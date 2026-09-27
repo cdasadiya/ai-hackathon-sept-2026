@@ -1,0 +1,27 @@
+---
+description: HTML templates and static assets for Nexus UI
+globs: templates/**/*.html,static/**/*
+alwaysApply: false
+---
+
+# Templates and static UI
+
+## Structure
+
+- Extend `templates/base_dashboard.html` for authenticated role pages; auth flows use `templates/auth/`.
+- Shared auth styling: `templates/includes/nexus-auth-styles.html`.
+- Prefer Bootstrap 5 / icons from CDN (see README) — match existing markup patterns rather than introducing a new CSS framework.
+
+## Django templates
+
+- Use `{% url 'name' %}` and `{% csrf_token %}` on all POST forms.
+- Keep role-specific copy in `patient/`, `doctor/`, `admin/` subtrees; avoid duplicating large nav blocks — use includes or base template blocks.
+
+## Static files
+
+- Theme changes go in `static/css/nexus-theme.css`; run `collectstatic` mindset for production (WhiteNoise serves from collected static).
+
+## Security in templates
+
+- Do not use `|safe` on user-generated or API callback content unless explicitly sanitized server-side.
+- Link downloads through existing view routes that enforce ownership, not direct media paths for sensitive reports.
