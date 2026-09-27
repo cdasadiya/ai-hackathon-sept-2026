@@ -564,6 +564,22 @@ class ReportDownloadTests(FeatureDataMixin, TestCase):
         self.assertEqual(self.webhook_payload["appointment_id"], self.appt.appointment_id)
         self.assertTrue(self.webhook_payload["drive_link"].startswith("http://testserver/reports/"))
 
+    def test_structured_ai_summary_renders_on_appointment_pages(self):
+        report = self.upload()
+        report.ai_analysis = {
+            "clinician_bullets": ["Haemoglobin below range; suggest review."],
+            "abnormal_flags": [{"test": "Haemoglobin", "value": "10.2 g/dL", "note": "Clinician to confirm."}],
+            "confidence": "medium",
+            "limitations": "",
+            "disclaimer": "AI-generated draft for clinician review only. Not a diagnosis.",
+        }
+        report.save(update_fields=["ai_analysis"])
+        for username, url_name in (("dl_doc", "doctor_appointment_detail"), ("dl_pat", "patient_appointment_detail")):
+            page = self.login(username).get(reverse(url_name, args=[self.appt.appointment_id]))
+            self.assertContains(page, "Haemoglobin below range; suggest review.")
+            self.assertContains(page, "<td>10.2 g/dL</td>")
+            self.assertContains(page, "confidence: medium")
+
 
 class ProfileTests(FeatureDataMixin, TestCase):
     def test_patient_and_doctor_can_update_profiles(self):
