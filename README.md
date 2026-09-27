@@ -329,7 +329,7 @@ Screenshots (current UI, live Render):
 ## Integrations
 
 1. **Google Drive** — Service account JSON and root folder ID in Integration Config; uploads use Drive API **v3**.  
-2. **n8n** — Blood report webhook URL + secret; callback to `/api/n8n/health-report-callback/` with `n8n_callback_token`.  
+2. **n8n** — Blood report webhook URL + secret; callback to `/api/n8n/health-report-callback/` with `n8n_callback_token`. Importable workflow and setup: [`docs/hackathon/n8n/`](docs/hackathon/n8n/README.md). Retry or verify with `python manage.py send_report_to_n8n <report_id>` (or `--stuck`).  
 3. Configure both in **/admin/** before processing real patient files in production.
 
 ---

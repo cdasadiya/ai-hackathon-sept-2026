@@ -1,12 +1,10 @@
-import logging, os, threading, json as _json
+import hmac, logging, os, threading, json as _json
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.core.signing import BadSignature, TimestampSigner
-from django.urls import reverse
-from urllib.parse import urlencode
+from django.core.signing import BadSignature
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import ValidationError
@@ -29,7 +27,7 @@ from .forms import AppointmentForm, UnifiedAppointmentForm, DoctorRemarkForm, Re
 from .models import Appointment, BloodReport, DoctorProfile, HealthReport, PatientProfile, ReportComment, User, UserToken
 from .permissions import IsAdmin, IsDoctorOrAdmin, IsPatient
 from .serializers import AppointmentSerializer, BloodReportSerializer, DoctorProfileSerializer, UserSerializer, RegisterSerializer
-from .services import trigger_n8n_webhook_async
+from .services import REPORT_LINK_MAX_AGE, REPORT_LINK_SIGNER, build_n8n_payload, trigger_n8n_webhook_async
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +60,15 @@ def _can_access_blood_report(user, report):
         return report.appointment is not None and report.appointment.doctor.user_id == user.id
     return False
 
-_REPORT_LINK_SIGNER = TimestampSigner(salt="blood-report-download")
-REPORT_LINK_MAX_AGE = 60 * 60 * 24
-
-def _signed_report_url(request, report):
-    """Absolute download URL that works without a session (used by n8n)."""
-    sig = _REPORT_LINK_SIGNER.sign(str(report.pk)).split(":", 1)[1]
-    return request.build_absolute_uri(f"{reverse('download_blood_report', args=[report.pk])}?{urlencode({'sig': sig})}")
+def _send_report_to_n8n(request, report):
+    trigger_n8n_webhook_async(build_n8n_payload(report, request.build_absolute_uri))
 
 def _has_valid_report_signature(request, report):
     sig = request.GET.get("sig")
     if not sig:
         return False
     try:
-        _REPORT_LINK_SIGNER.unsign(f"{report.pk}:{sig}", max_age=REPORT_LINK_MAX_AGE)
+        REPORT_LINK_SIGNER.unsign(f"{report.pk}:{sig}", max_age=REPORT_LINK_MAX_AGE)
     except BadSignature:
         return False
     return True
@@ -340,18 +333,7 @@ def book_appointment(request):
                     file_type=file_type, n8n_status=BloodReport.N8nStatus.PENDING,
                     drive_folder_name="local_media",
                 )
-                from rest_framework_simplejwt.tokens import RefreshToken
-                jwt_token = str(RefreshToken.for_user(request.user).access_token)
-                webhook_payload = {
-                    "blood_report_id": saved.id, "patient_id": profile.id,
-                    "patient_email": request.user.email,
-                    "drive_link": _signed_report_url(request, saved),
-                    "filename": safe_name, "jwt_token": jwt_token,
-                    "appointment_id": appointment.appointment_id,
-                }
-                trigger_n8n_webhook_async(webhook_payload)
-                saved.n8n_status = BloodReport.N8nStatus.PROCESSING
-                saved.save(update_fields=["n8n_status"])
+                _send_report_to_n8n(request, saved)
             messages.success(request, f"✅ Appointment {appointment.appointment_id} booked!")
         except ValidationError as exc:
             for msg in exc.messages: messages.error(request, msg)
@@ -445,18 +427,7 @@ def upload_report(request):
             file_type=file_type, n8n_status=BloodReport.N8nStatus.PENDING,
             drive_folder_name="local_media",
         )
-        from rest_framework_simplejwt.tokens import RefreshToken
-        jwt_token = str(RefreshToken.for_user(request.user).access_token)
-        patient_email = patient_profile.user.email if patient_profile else request.user.email
-        file_url = _signed_report_url(request, saved)
-        trigger_n8n_webhook_async({
-            "blood_report_id": saved.id, "patient_id": pid,
-            "patient_email": patient_email, "drive_link": file_url,
-            "filename": safe_name, "jwt_token": jwt_token,
-            "appointment_id": appointment.appointment_id if appointment else None,
-        })
-        saved.n8n_status = BloodReport.N8nStatus.PROCESSING
-        saved.save(update_fields=["n8n_status"])
+        _send_report_to_n8n(request, saved)
         messages.success(request, f"✅ Report uploaded successfully! AI analysis in progress.")
     except Exception as exc:
         logger.exception("Report upload failed: %s", exc)
@@ -621,6 +592,13 @@ def doctor_profile_edit(request):
 # Keeping GET open would allow CSRF via <img src="..."> / prefetch.
 
 
+def _optional_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @csrf_exempt
 @require_POST
 def n8n_health_report_callback(request):
@@ -632,22 +610,31 @@ def n8n_health_report_callback(request):
     if not expected_token:
         logger.error("n8n callback rejected because no callback token is configured.")
         return JsonResponse({"detail": "Callback token is not configured."}, status=503)
-    if provided_token != expected_token:
+    if not hmac.compare_digest(provided_token.encode(), expected_token.encode()):
         logger.warning("n8n callback: invalid token.")
         return JsonResponse({"detail": "Unauthorized"}, status=401)
     try: data = _json.loads(request.body)
     except _json.JSONDecodeError: return JsonResponse({"detail": "Invalid JSON."}, status=400)
-    blood_report_id = data.get("blood_report_id")
-    patient_id = data.get("patient_id")
+    if not isinstance(data, dict): return JsonResponse({"detail": "JSON object expected."}, status=400)
+    blood_report_id = _optional_int(data.get("blood_report_id"))
+    patient_id = _optional_int(data.get("patient_id"))
     drive_file_id = data.get("health_report_drive_file_id", "")
     drive_link = data.get("health_report_drive_link", "")
-    ai_summary = data.get("ai_summary", {})
+    ai_summary = data.get("ai_summary") or {}
+    if isinstance(ai_summary, str):
+        try: ai_summary = _json.loads(ai_summary)
+        except _json.JSONDecodeError: ai_summary = {"summary": ai_summary}
     emailed_at_raw = data.get("emailed_at")
     if not blood_report_id: return JsonResponse({"detail": "blood_report_id required."}, status=400)
-    if not drive_file_id or not drive_link: return JsonResponse({"detail": "health_report_drive_file_id and link required."}, status=400)
     blood_report = BloodReport.objects.filter(pk=blood_report_id).first()
     if not blood_report: return JsonResponse({"detail": f"BloodReport #{blood_report_id} not found."}, status=404)
-    patient_profile = PatientProfile.objects.filter(pk=patient_id).first() or blood_report.patient
+    if str(data.get("status", "")).upper() == BloodReport.N8nStatus.FAILED:
+        blood_report.n8n_status = BloodReport.N8nStatus.FAILED
+        blood_report.ai_analysis = ai_summary or {"error": "n8n reported a failure without details."}
+        blood_report.save(update_fields=["n8n_status", "ai_analysis"])
+        return JsonResponse({"status": "ok", "n8n_status": blood_report.n8n_status})
+    if not drive_file_id or not drive_link: return JsonResponse({"detail": "health_report_drive_file_id and link required."}, status=400)
+    patient_profile = (patient_id and PatientProfile.objects.filter(pk=patient_id).first()) or blood_report.patient
     if not patient_profile: return JsonResponse({"detail": f"PatientProfile #{patient_id} not found."}, status=404)
     emailed_at = None
     if emailed_at_raw:

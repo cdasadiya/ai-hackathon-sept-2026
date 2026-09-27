@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import shutil
@@ -395,7 +396,8 @@ class ReportAndCommentTests(FeatureDataMixin, TestCase):
         self.assertEqual(ok.status_code, 200)
         report = BloodReport.objects.get(appointment=appt)
         self.assertEqual(report.uploader, patient.user)
-        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.PROCESSING)
+        # No n8n webhook configured in tests, so the report is never handed off.
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.PENDING)
 
         huge = SimpleUploadedFile("big.pdf", b"x" * (10 * 1024 * 1024 + 1), content_type="application/pdf")
         too_big = client.post(
@@ -549,6 +551,34 @@ class ReportDownloadTests(FeatureDataMixin, TestCase):
         self.assertIn("sig=", link)
         self.download(Client(), link)
         self.assertEqual(Client().get(f"{report.get_file_url()}?sig=forged").status_code, 302)
+
+    def test_webhook_payload_matches_n8n_workflow_contract(self):
+        report = self.upload()
+        self.assertEqual(
+            set(self.webhook_payload),
+            {"blood_report_id", "patient_id", "patient_email", "drive_link", "filename", "mime_type", "appointment_id"},
+        )
+        self.assertEqual(self.webhook_payload["blood_report_id"], report.pk)
+        self.assertEqual(self.webhook_payload["patient_id"], self.patient.pk)
+        self.assertEqual(self.webhook_payload["mime_type"], "application/pdf")
+        self.assertEqual(self.webhook_payload["appointment_id"], self.appt.appointment_id)
+        self.assertTrue(self.webhook_payload["drive_link"].startswith("http://testserver/reports/"))
+
+    def test_structured_ai_summary_renders_on_appointment_pages(self):
+        report = self.upload()
+        report.ai_analysis = {
+            "clinician_bullets": ["Haemoglobin below range; suggest review."],
+            "abnormal_flags": [{"test": "Haemoglobin", "value": "10.2 g/dL", "note": "Clinician to confirm."}],
+            "confidence": "medium",
+            "limitations": "",
+            "disclaimer": "AI-generated draft for clinician review only. Not a diagnosis.",
+        }
+        report.save(update_fields=["ai_analysis"])
+        for username, url_name in (("dl_doc", "doctor_appointment_detail"), ("dl_pat", "patient_appointment_detail")):
+            page = self.login(username).get(reverse(url_name, args=[self.appt.appointment_id]))
+            self.assertContains(page, "Haemoglobin below range; suggest review.")
+            self.assertContains(page, "<td>10.2 g/dL</td>")
+            self.assertContains(page, "confidence: medium")
 
 
 class ProfileTests(FeatureDataMixin, TestCase):
@@ -805,6 +835,98 @@ class CallbackAndHealthTests(FeatureDataMixin, TestCase):
         post.side_effect = requests.exceptions.Timeout("timed out")
         self.assertEqual(trigger_n8n_webhook({"blood_report_id": 1}), {})
         self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer hook-secret")
+
+    def _callback(self, payload, token="callback-secret"):
+        return Client().post(
+            reverse("n8n_health_report_callback"),
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+    def test_n8n_callback_failed_status_and_loose_types(self):
+        _, patient = self.make_patient("cb_fail_pat")
+        report = BloodReport.objects.create(uploader=patient.user, patient=patient, original_filename="cbc.pdf")
+        config = IntegrationConfig.get_config()
+        config.n8n_callback_token = "callback-secret"
+        config.save()
+
+        failed = self._callback({
+            "blood_report_id": str(report.pk),
+            "patient_id": None,
+            "status": "FAILED",
+            "ai_summary": {"limitations": "download failed"},
+        })
+        self.assertEqual(failed.status_code, 200, failed.content)
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.FAILED)
+        self.assertEqual(report.ai_analysis, {"limitations": "download failed"})
+        self.assertFalse(HealthReport.objects.filter(blood_report=report).exists())
+
+        done = self._callback({
+            "blood_report_id": report.pk,
+            "patient_id": "unknown",
+            "health_report_drive_file_id": f"nexus-local-{report.pk}",
+            "health_report_drive_link": f"https://example.com/reports/{report.pk}/download/",
+            "ai_summary": json.dumps({"clinician_bullets": ["Hb low"], "confidence": "medium"}),
+        })
+        self.assertEqual(done.status_code, 200, done.content)
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.DONE)
+        self.assertEqual(report.ai_analysis["clinician_bullets"], ["Hb low"])
+        self.assertEqual(report.health_report.patient, patient)
+
+        self.assertEqual(self._callback({"blood_report_id": 999999, "status": "FAILED"}).status_code, 404)
+        self.assertEqual(self._callback([1, 2]).status_code, 400)
+
+    @patch("app.services.threading.Thread")
+    def test_async_webhook_tracks_report_status(self, thread):
+        from .services import _deliver_n8n_webhook, trigger_n8n_webhook_async
+
+        _, patient = self.make_patient("async_pat")
+        report = BloodReport.objects.create(uploader=patient.user, patient=patient, original_filename="cbc.pdf")
+        payload = {"blood_report_id": report.pk}
+
+        self.assertFalse(trigger_n8n_webhook_async(payload))
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.PENDING)
+        thread.assert_not_called()
+
+        config = IntegrationConfig.get_config()
+        config.n8n_blood_report_webhook_url = "https://example.invalid/hook"
+        config.save()
+        self.assertTrue(trigger_n8n_webhook_async(payload))
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.PROCESSING)
+        thread.return_value.start.assert_called_once()
+
+        with patch("app.services._post_n8n_webhook", return_value=None), patch("app.services.connection.close"):
+            _deliver_n8n_webhook(payload)
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.FAILED)
+        self.assertIn("error", report.ai_analysis)
+
+    @patch("app.services.requests.post")
+    def test_send_report_to_n8n_command(self, post):
+        _, patient = self.make_patient("cmd_pat")
+        report = BloodReport.objects.create(
+            uploader=patient.user, patient=patient, original_filename="cbc.pdf",
+            n8n_status=BloodReport.N8nStatus.FAILED,
+        )
+        config = IntegrationConfig.get_config()
+        config.n8n_blood_report_webhook_url = "https://example.invalid/hook"
+        config.n8n_webhook_secret = "hook-secret"
+        config.n8n_callback_token = "callback-secret"
+        config.save()
+        post.return_value.json.return_value = {"status": "accepted", "blood_report_id": report.pk}
+
+        with override_settings(PUBLIC_BASE_URL="https://nexus.example"):
+            call_command("send_report_to_n8n", "--stuck", stdout=io.StringIO())
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["blood_report_id"], report.pk)
+        self.assertTrue(sent["drive_link"].startswith(f"https://nexus.example/reports/{report.pk}/download/?sig="))
+        report.refresh_from_db()
+        self.assertEqual(report.n8n_status, BloodReport.N8nStatus.PROCESSING)
 
 
 class AdminApiTests(FeatureDataMixin, TestCase):
