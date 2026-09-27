@@ -47,6 +47,10 @@ def _default_csrf_origins() -> str:
 
 ALLOWED_HOSTS = get_list_env("ALLOWED_HOSTS", _default_allowed_hosts())
 CSRF_TRUSTED_ORIGINS = get_list_env("CSRF_TRUSTED_ORIGINS", _default_csrf_origins())
+# Used to build absolute report links outside a request (e.g. `manage.py send_report_to_n8n`).
+PUBLIC_BASE_URL = (
+    os.getenv("PUBLIC_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:8000"
+).strip().rstrip("/")
 
 HEALTHZ_RUN_MIGRATIONS = get_bool_env("HEALTHZ_RUN_MIGRATIONS", False)
 
